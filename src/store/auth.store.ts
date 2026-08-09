@@ -5,7 +5,7 @@ import { INITIAL_USERS } from "@/data/users";
 interface AuthState {
   currentUser: User;
   isAuthenticated: boolean;
-  login: (emailOrCode: string, role: UserRole) => boolean;
+  login: (user: User) => void;
   logout: () => void;
   setRole: (role: UserRole) => void;
   users: User[];
@@ -17,45 +17,10 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>((set) => ({
   currentUser: INITIAL_USERS[0],
-  isAuthenticated: true,
+  isAuthenticated: false,
   users: INITIAL_USERS,
-  login: (emailOrCode: string, role: UserRole) => {
-    if (role === "Admin") {
-      const found = INITIAL_USERS.find(
-        (u) => u.email.toLowerCase() === emailOrCode.trim().toLowerCase() && u.role === "Admin"
-      );
-      if (found) {
-        set({ currentUser: found, isAuthenticated: true });
-        return true;
-      }
-      // Preset admin details
-      set({
-        currentUser: {
-          id: "usr-1",
-          name: "System Admin",
-          email: emailOrCode.trim() || "admin@piecerate.com",
-          role: "Admin",
-          active: true,
-          createdAt: "2026-01-01",
-        },
-        isAuthenticated: true,
-      });
-      return true;
-    } else {
-      // Login as Worker
-      set({
-        currentUser: {
-          id: "usr-worker-logged",
-          name: emailOrCode.trim() || "Worker User",
-          email: "worker@piecerate.com",
-          role: "Worker",
-          active: true,
-          createdAt: "2026-01-01",
-        },
-        isAuthenticated: true,
-      });
-      return true;
-    }
+  login: (user: User) => {
+    set({ currentUser: user, isAuthenticated: true });
   },
   logout: () => {
     set({ isAuthenticated: false });
