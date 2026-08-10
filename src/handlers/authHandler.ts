@@ -1,15 +1,5 @@
 import axios from "axios";
 
-export async function register(payload: any) {
-  try {
-    const response = await axios.post("/api/auth/register", payload);
-    return response.data;
-  } catch (error: any) {
-    const message = error.response?.data?.error || "Registration failed";
-    throw new Error(message);
-  }
-}
-
 export async function login(payload: any) {
   try {
     const response = await axios.post("/api/auth/login", payload);
