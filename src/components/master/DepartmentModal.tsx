@@ -2,19 +2,21 @@
 
 import React, { useState } from "react";
 import { Department } from "@/types/department";
-import { DepartmentHandler } from "@/handlers/department.handler";
+import { createDepartment, updateDepartment } from "@/handlers/department.handler";
 import { X, Building2 } from "lucide-react";
 
 interface DepartmentModalProps {
   isOpen: boolean;
   onClose: () => void;
   deptToEdit?: Department | null;
+  onSaved?: () => void;
 }
 
 export default function DepartmentModal({
   isOpen,
   onClose,
   deptToEdit,
+  onSaved,
 }: DepartmentModalProps) {
   const [formData, setFormData] = useState<{
     code: string;
@@ -27,6 +29,8 @@ export default function DepartmentModal({
     description: "",
     status: "Active",
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const [prevId, setPrevId] = useState<string | null>(null);
   const currentId = deptToEdit ? deptToEdit.id : "new";
@@ -52,14 +56,31 @@ export default function DepartmentModal({
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (deptToEdit) {
-      DepartmentHandler.updateDepartment(deptToEdit.id, formData);
-    } else {
-      DepartmentHandler.addDepartment(formData);
+    setErrorMessage("");
+
+    if (!formData.name.trim()) {
+      setErrorMessage("Department name is required.");
+      return;
     }
-    onClose();
+
+    try {
+      setIsSubmitting(true);
+
+      if (deptToEdit) {
+        await updateDepartment(deptToEdit.id, formData);
+      } else {
+        await createDepartment(formData);
+      }
+
+      onSaved?.();
+      onClose();
+    } catch (error: any) {
+      setErrorMessage(error.message || "Something went wrong.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -79,13 +100,18 @@ export default function DepartmentModal({
         </div>
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+          {errorMessage && (
+            <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+              {errorMessage}
+            </div>
+          )}
+
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1">
-              Department Code *
+              Department Code
             </label>
             <input
               type="text"
-              required
               value={formData.code}
               onChange={(e) => setFormData({ ...formData, code: e.target.value })}
               placeholder="e.g. CUT-01"
@@ -130,9 +156,10 @@ export default function DepartmentModal({
             </button>
             <button
               type="submit"
-              className="rounded-lg bg-blue-600 px-5 py-2 text-xs font-bold text-white shadow-sm hover:bg-blue-700 transition-colors"
+              disabled={isSubmitting}
+              className="rounded-lg bg-blue-600 px-5 py-2 text-xs font-bold text-white shadow-sm hover:bg-blue-700 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Save Department
+              {isSubmitting ? "Saving..." : "Save Department"}
             </button>
           </div>
         </form>

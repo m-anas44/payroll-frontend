@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { Worker, PoliceVerificationStatus } from "@/types/worker";
-import { WorkerHandler } from "@/handlers/worker.handler";
+import { addWorker, updateWorker } from "@/handlers/worker.handler";
 import { useMasterDataStore } from "@/store/masterData.store";
 import { SKILLS_LIST, POLICE_VERIFICATION_STATUSES } from "@/lib/constants";
 import { formatCNICInput } from "@/lib/validators";
@@ -85,34 +85,30 @@ export default function WorkerModal({
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
 
     const selectedDept = departments.find((d) => d.id === formData.departmentId);
 
-    if (workerToEdit) {
-      const res = WorkerHandler.updateWorker(workerToEdit.id, {
-        ...formData,
-        departmentName: selectedDept?.name || "",
-      });
-      if (!res.success) {
-        setErrorMessage(res.message);
-        return;
+    try {
+      if (workerToEdit) {
+        await updateWorker(workerToEdit.id, {
+          ...formData,
+          departmentName: selectedDept?.name || "",
+        });
+      } else {
+        await addWorker({
+          ...formData,
+          departmentName: selectedDept?.name || "",
+        });
       }
-    } else {
-      const res = WorkerHandler.addWorker({
-        ...formData,
-        departmentName: selectedDept?.name || "",
-      });
-      if (!res.success) {
-        setErrorMessage(res.message);
-        return;
-      }
-    }
 
-    if (onSuccess) onSuccess();
-    onClose();
+      if (onSuccess) onSuccess();
+      onClose();
+    } catch (error: any) {
+      setErrorMessage(error.message || "Unable to save worker.");
+    }
   };
 
   return (
