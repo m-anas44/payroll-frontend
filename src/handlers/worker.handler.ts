@@ -1,10 +1,8 @@
 import axios from "axios";
-import { Worker, PoliceVerificationStatus } from "@/types/worker";
+import { Worker, PoliceVerificationStatus, WorkerGender, WorkerStatus } from "@/types/worker";
 import { isValidCNIC } from "@/lib/validators";
 
-const normalizePoliceVerification = (
-  value?: string,
-): PoliceVerificationStatus => {
+const normalizePoliceVerification = (value?: string): PoliceVerificationStatus => {
   const normalized = String(value || "").toLowerCase();
 
   if (normalized === "yes" || normalized === "verified") return "Verified";
@@ -12,22 +10,38 @@ const normalizePoliceVerification = (
   return "Not Verified";
 };
 
-const normalizeStatus = (value?: string): "Active" | "Inactive" =>
-  String(value || "").toLowerCase() === "inactive" ? "Inactive" : "Active";
+const normalizeGender = (value?: string): WorkerGender => {
+  const normalized = String(value || "").toLowerCase();
+
+  if (normalized === "male") return "Male";
+  if (normalized === "female") return "Female";
+  return "Other";
+};
+
+const normalizeStatus = (value?: string): WorkerStatus => {
+  const normalized = String(value || "").toLowerCase();
+
+  if (normalized === "inactive") return "Inactive";
+  if (normalized === "on_leave" || normalized === "on leave") return "On Leave";
+  if (normalized === "terminated") return "Terminated";
+  return "Active";
+};
 
 const normalizeWorker = (item: any): Worker => ({
   id: item?._id || item?.id || "",
   workerCode: item?.workerCode || item?.worker_code || `W-${String(item?._id || item?.id || "").slice(-4) || "0001"}`,
   name: item?.name || "Unnamed Worker",
   cnic: item?.cnic || "",
+  fatherHusbandName: item?.fatherHusbandName || item?.father_husband_name || "",
   departmentId: item?.departmentId || item?.department_id || "",
-  departmentName: item?.departmentName || item?.department_name || "General",
-  skill: item?.skill || "General",
-  doj: item?.dateOfJoining || item?.doj || new Date().toISOString().split("T")[0],
-  dob: item?.dateOfBirth || item?.dob || "",
-  contact: item?.contactNumber || item?.contact || "",
+  departmentName: item?.departmentName || item?.department_name || "",
+  skill: item?.skill || "",
+  doj: item?.dateOfJoining || item?.date_of_joining || "",
+  dob: item?.dateOfBirth || item?.date_of_birth || "",
+  gender: normalizeGender(item?.gender || item?.Gender),
+  contact: item?.contactNumber || item?.contact_number || "",
   address: item?.address || "",
-  policeVerification: normalizePoliceVerification(item?.policeVerification),
+  policeVerification: normalizePoliceVerification(item?.policeVerification || item?.police_verification),
   status: normalizeStatus(item?.status),
   createdAt: item?.createdAt || new Date().toISOString(),
 });
@@ -36,9 +50,11 @@ const toApiPayload = (data: any) => {
   const payload: Record<string, any> = {
     name: data.name,
     cnic: data.cnic,
+    fatherHusbandName: data.fatherHusbandName || data.father_husband_name || null,
     departmentId: data.departmentId,
     dateOfJoining: data.doj || data.dateOfJoining,
     dateOfBirth: data.dob || data.dateOfBirth || null,
+    gender: String(data.gender || "other").toLowerCase(),
     skill: data.skill || null,
     contactNumber: data.contact || data.contactNumber || null,
     address: data.address || null,
@@ -51,7 +67,13 @@ const toApiPayload = (data: any) => {
             ? "no"
             : data.policeVerification || "no",
     status:
-      data.status === "Inactive" ? "inactive" : data.status === "Active" ? "active" : "active",
+      data.status === "Inactive"
+        ? "inactive"
+        : data.status === "On Leave"
+          ? "on_leave"
+          : data.status === "Terminated"
+            ? "terminated"
+            : "active",
   };
 
   if (!payload.dateOfJoining) {
@@ -64,13 +86,19 @@ const toApiPayload = (data: any) => {
 export async function getWorkers(params?: Record<string, string | number | undefined>) {
   try {
     const response = await axios.get("/api/admin/workers", { params });
-    const items = Array.isArray(response.data?.items)
-      ? response.data.items
-      : Array.isArray(response.data)
-        ? response.data
+    const payload = response.data ?? {};
+    const items = Array.isArray(payload.items)
+      ? payload.items
+      : Array.isArray(payload)
+        ? payload
         : [];
 
-    return items.map(normalizeWorker);
+    return {
+      items: items.map(normalizeWorker),
+      total: Number(payload.total ?? items.length ?? 0),
+      page: Number(payload.page ?? 1),
+      limit: Number(payload.limit ?? items.length ?? 20),
+    };
   } catch (error: any) {
     const message =
       error.response?.data?.error ||

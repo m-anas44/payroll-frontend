@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Download } from "lucide-react";
+import { Download, FileUp } from "lucide-react";
 import { ExcelHandler } from "@/handlers/excel.handler";
 
 interface ExportButtonProps {
@@ -26,7 +26,7 @@ export default function ExportButton({ type, month, label }: ExportButtonProps) 
       onClick={handleExport}
       className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 shadow-xs transition-colors"
     >
-      <Download className="h-3.5 w-3.5 text-emerald-600" />
+      <FileUp className="h-3.5 w-3.5 text-emerald-600" />
       <span>{label || "Export CSV"}</span>
     </button>
   );
