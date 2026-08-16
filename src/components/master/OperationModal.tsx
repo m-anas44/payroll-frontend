@@ -1,37 +1,42 @@
 "use client";
 
 import React, { useState } from "react";
+import { Article } from "@/types/article";
+import { Department } from "@/types/department";
 import { Operation } from "@/types/operation";
-import { OperationHandler } from "@/handlers/operation.handler";
-import { useMasterDataStore } from "@/store/masterData.store";
 import { X, Layers } from "lucide-react";
 
 interface OperationModalProps {
   isOpen: boolean;
   onClose: () => void;
   operationToEdit?: Operation | null;
+  articles: Article[];
+  departments: Department[];
+  onSubmit: (payload: {
+    name: string;
+    articleId: string;
+    departmentId: string;
+    status?: "Active" | "Inactive";
+  }) => Promise<void> | void;
 }
 
 export default function OperationModal({
   isOpen,
   onClose,
   operationToEdit,
+  articles,
+  departments,
+  onSubmit,
 }: OperationModalProps) {
-  const { articles, departments } = useMasterDataStore();
-
   const [formData, setFormData] = useState<{
-    operationCode: string;
     name: string;
     articleId: string;
     departmentId: string;
-    description: string;
     status: "Active" | "Inactive";
   }>({
-    operationCode: "",
     name: "",
     articleId: "",
     departmentId: "",
-    description: "",
     status: "Active",
   });
 
@@ -42,20 +47,16 @@ export default function OperationModal({
     setPrevId(currentId);
     if (operationToEdit) {
       setFormData({
-        operationCode: operationToEdit.operationCode,
         name: operationToEdit.name,
         articleId: operationToEdit.articleId,
         departmentId: operationToEdit.departmentId,
-        description: operationToEdit.description || "",
         status: operationToEdit.status,
       });
     } else {
       setFormData({
-        operationCode: "",
         name: "",
         articleId: articles[0]?.id || "",
         departmentId: departments[0]?.id || "",
-        description: "",
         status: "Active",
       });
     }
@@ -63,24 +64,9 @@ export default function OperationModal({
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const article = articles.find((a) => a.id === formData.articleId);
-    const department = departments.find((d) => d.id === formData.departmentId);
-
-    const payload = {
-      ...formData,
-      articleCode: article?.articleCode || "",
-      articleName: article?.name || "",
-      departmentName: department?.name || "",
-    };
-
-    if (operationToEdit) {
-      OperationHandler.updateOperation(operationToEdit.id, payload);
-    } else {
-      OperationHandler.addOperation(payload);
-    }
-    onClose();
+    await onSubmit(formData);
   };
 
   return (
@@ -91,33 +77,14 @@ export default function OperationModal({
             <Layers className="h-5 w-5 text-blue-600" />
             {operationToEdit ? "Edit Operation" : "Add Operation"}
           </h3>
-          <button
-            onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 "
-          >
+          <button type="button" onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 ">
             <X className="h-5 w-5" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
-              Operation Code *
-            </label>
-            <input
-              type="text"
-              required
-              value={formData.operationCode}
-              onChange={(e) => setFormData({ ...formData, operationCode: e.target.value })}
-              placeholder="e.g. OP-101"
-              className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:bg-white focus:outline-none font-mono"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
-              Operation Name *
-            </label>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Operation Name *</label>
             <input
               type="text"
               required
@@ -130,9 +97,7 @@ export default function OperationModal({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                Associated Article *
-              </label>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Associated Article *</label>
               <select
                 required
                 value={formData.articleId}
@@ -140,17 +105,13 @@ export default function OperationModal({
                 className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:bg-white focus:outline-none "
               >
                 {articles.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.articleCode} - {a.name}
-                  </option>
+                  <option key={a.id} value={a.id}>{a.articleNumber} - {a.name}</option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                Department *
-              </label>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Department *</label>
               <select
                 required
                 value={formData.departmentId}
@@ -158,41 +119,27 @@ export default function OperationModal({
                 className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:bg-white focus:outline-none "
               >
                 {departments.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}
-                  </option>
+                  <option key={d.id} value={d.id}>{d.name}</option>
                 ))}
               </select>
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
-              Operation Instructions / Notes
-            </label>
-            <textarea
-              rows={2}
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Technical procedure notes..."
+            <label className="block text-xs font-bold text-slate-700 mb-1">Status</label>
+            <select
+              value={formData.status}
+              onChange={(e) => setFormData({ ...formData, status: e.target.value as "Active" | "Inactive" })}
               className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:bg-white focus:outline-none "
-            />
+            >
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+            </select>
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 ">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-lg px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 "
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="rounded-lg bg-blue-600 px-5 py-2 text-xs font-bold text-white shadow-sm hover:bg-blue-700 transition-colors"
-            >
-              Save Operation
-            </button>
+            <button type="button" onClick={onClose} className="rounded-lg px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 ">Cancel</button>
+            <button type="submit" className="rounded-lg bg-blue-600 px-5 py-2 text-xs font-bold text-white shadow-sm hover:bg-blue-700 transition-colors">Save Operation</button>
           </div>
         </form>
       </div>
