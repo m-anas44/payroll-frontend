@@ -14,6 +14,7 @@ const normalizeArticle = (item: any): Article => ({
 export const ArticleHandler = {
   async getArticles(params?: { search?: string; page?: number; limit?: number }) {
     const response = await axios.get("/api/admin/articles", { params });
+    console.log("we got articles: ", response)
     const payload = response.data ?? {};
     const items = Array.isArray(payload.items) ? payload.items : [];
 
