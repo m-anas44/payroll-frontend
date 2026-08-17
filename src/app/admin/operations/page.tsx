@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useAuthStore } from "@/store/auth.store";
 import { ArticleHandler } from "@/handlers/article.handler";
-import { OperationHandler } from "@/handlers/operation.handler";
+import { createOperation, deleteOperation, getOperations, updateOperation } from "@/handlers/operation.handler";
 import { getDepartments } from "@/handlers/department.handler";
 import OperationModal from "@/components/master/OperationModal";
 import { Article } from "@/types/article";
@@ -34,11 +34,12 @@ export default function OperationsPage() {
         setIsLoading(true);
         setError("");
 
-        const result = await OperationHandler.getOperations({
+        const result = await getOperations({
           search: customSearch?.trim() || submittedSearch.trim() || undefined,
           page: nextPage,
           limit,
         });
+        console.log(result)
 
         setOperations(result.items);
         setTotal(result.total);
@@ -91,7 +92,7 @@ export default function OperationsPage() {
     }
 
     try {
-      await OperationHandler.deleteOperation(operation.id);
+      await deleteOperation(operation.id);
       await loadOperations(page, submittedSearch);
     } catch (err: any) {
       setError(err.message || "Unable to delete operation.");
@@ -106,9 +107,9 @@ export default function OperationsPage() {
   }) => {
     try {
       if (opToEdit) {
-        await OperationHandler.updateOperation(opToEdit.id, payload);
+        await updateOperation(opToEdit.id, payload);
       } else {
-        await OperationHandler.createOperation(payload);
+        await createOperation(payload);
       }
 
       setIsModalOpen(false);
@@ -205,10 +206,10 @@ export default function OperationsPage() {
                       <Layers className="h-4 w-4 text-slate-400" />
                       <span>{operation.name}</span>
                     </td>
-                    <td className="px-4 py-3 text-slate-700">{article?.name || operation.articleId || "-"}</td>
+                    <td className="px-4 py-3 text-slate-700">{operation.articleName || "-"}</td>
                     <td className="px-4 py-3 text-slate-700 flex items-center gap-1">
                       <Building2 className="h-3 w-3 text-purple-500" />
-                      <span>{department?.name || operation.departmentId || "-"}</span>
+                      <span>{operation.departmentName || "-"}</span>
                     </td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ${operation.status === "Active" ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-700"}`}>

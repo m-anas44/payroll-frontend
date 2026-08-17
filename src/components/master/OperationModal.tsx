@@ -28,6 +28,7 @@ export default function OperationModal({
   departments,
   onSubmit,
 }: OperationModalProps) {
+  console.log(articles, departments)
   const [formData, setFormData] = useState<{
     name: string;
     articleId: string;
