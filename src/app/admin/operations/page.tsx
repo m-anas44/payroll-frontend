@@ -2,14 +2,22 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import { useAuthStore } from "@/store/auth.store";
-import { ArticleHandler } from "@/handlers/article.handler";
+import { getArticles } from "@/handlers/article.handler";
 import { createOperation, deleteOperation, getOperations, updateOperation } from "@/handlers/operation.handler";
 import { getDepartments } from "@/handlers/department.handler";
 import OperationModal from "@/components/master/OperationModal";
+import Pagination from "@/components/common/Pagination"; // Adjust path if located elsewhere (e.g., @/components/shared/Pagination)
 import { Article } from "@/types/article";
 import { Department } from "@/types/department";
 import { Operation } from "@/types/operation";
-import { Layers, Plus, Edit2, Trash2, Search, Building2 } from "lucide-react";
+import {
+  Layers,
+  Plus,
+  Edit2,
+  Trash2,
+  Search,
+  Building2,
+} from "lucide-react";
 
 export default function OperationsPage() {
   const { currentUser } = useAuthStore();
@@ -29,17 +37,17 @@ export default function OperationsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const loadOperations = useCallback(
-    async (nextPage = 1, customSearch?: string) => {
+    async (nextPage = 1, customSearch?: string, customLimit?: number) => {
       try {
         setIsLoading(true);
         setError("");
 
+        const effectiveLimit = customLimit ?? limit;
         const result = await getOperations({
-          search: customSearch?.trim() || submittedSearch.trim() || undefined,
+          search: customSearch !== undefined ? customSearch.trim() : submittedSearch.trim(),
           page: nextPage,
-          limit,
+          limit: effectiveLimit,
         });
-        console.log(result)
 
         setOperations(result.items);
         setTotal(result.total);
@@ -55,16 +63,23 @@ export default function OperationsPage() {
   );
 
   const loadReferenceData = useCallback(async () => {
-    try {
-      const [articlesResponse, departmentsResponse] = await Promise.all([
-        ArticleHandler.getArticles({ limit: 200 }),
-        getDepartments(),
-      ]);
+    const [articlesResult, departmentsResult] = await Promise.allSettled([
+      getArticles(),
+      getDepartments(),
+    ]);
 
-      setArticles(articlesResponse.items);
-      setDepartments(departmentsResponse);
-    } catch (err: any) {
-      console.error("Unable to load references", err);
+    console.log(articlesResult, departmentsResult)
+
+    if (articlesResult.status === "fulfilled") {
+      setArticles(articlesResult.value.items);
+    } else {
+      console.error("Failed to load articles:", articlesResult.reason);
+    }
+
+    if (departmentsResult.status === "fulfilled") {
+      setDepartments(departmentsResult.value);
+    } else {
+      console.error("Failed to load departments:", departmentsResult.reason);
     }
   }, []);
 
@@ -86,13 +101,24 @@ export default function OperationsPage() {
     loadOperations(1, "");
   };
 
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    loadOperations(newPage);
+  };
+
+  const handleLimitChange = (newLimit: number) => {
+    setLimit(newLimit);
+    setPage(1);
+    loadOperations(1, undefined, newLimit);
+  };
+
   const handleDelete = async (operation: Operation) => {
     if (!confirm(`Are you sure you want to delete operation "${operation.name}"?`)) {
       return;
     }
 
     try {
-      await deleteOperation(operation.id);
+      await deleteOperation(operation._id);
       await loadOperations(page, submittedSearch);
     } catch (err: any) {
       setError(err.message || "Unable to delete operation.");
@@ -103,11 +129,10 @@ export default function OperationsPage() {
     name: string;
     articleId: string;
     departmentId: string;
-    status?: "Active" | "Inactive";
   }) => {
     try {
       if (opToEdit) {
-        await updateOperation(opToEdit.id, payload);
+        await updateOperation(opToEdit._id, payload);
       } else {
         await createOperation(payload);
       }
@@ -150,6 +175,7 @@ export default function OperationsPage() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
             placeholder="Search operation name..."
             className="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-slate-300 bg-white text-slate-900 focus:outline-none focus:border-blue-600"
           />
@@ -179,80 +205,74 @@ export default function OperationsPage() {
         <table className="w-full text-left text-xs">
           <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">
             <tr>
-              <th className="px-4 py-3">Name</th>
-              <th className="px-4 py-3">Article</th>
-              <th className="px-4 py-3">Department</th>
-              <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3">Operation Name</th>
+              <th className="px-4 py-3">Article Number</th>
+              <th className="px-4 py-3">Department Name</th>
               <th className="px-4 py-3 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 font-medium">
             {isLoading ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-slate-400 font-medium">Loading operations...</td>
+                <td colSpan={4} className="px-4 py-8 text-center text-slate-400 font-medium">Loading operations...</td>
               </tr>
             ) : operations.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-slate-400 font-medium">No operations found.</td>
+                <td colSpan={4} className="px-4 py-8 text-center text-slate-400 font-medium">No operations found.</td>
               </tr>
             ) : (
-              operations.map((operation) => {
-                const article = articles.find((item) => item.id === operation.articleId);
-                const department = departments.find((item) => item.id === operation.departmentId);
-
-                return (
-                  <tr key={operation.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="px-4 py-3 font-bold text-slate-900 flex items-center gap-1.5">
-                      <Layers className="h-4 w-4 text-slate-400" />
-                      <span>{operation.name}</span>
-                    </td>
-                    <td className="px-4 py-3 text-slate-700">{operation.articleName || "-"}</td>
-                    <td className="px-4 py-3 text-slate-700 flex items-center gap-1">
-                      <Building2 className="h-3 w-3 text-purple-500" />
-                      <span>{operation.departmentName || "-"}</span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ${operation.status === "Active" ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-700"}`}>
-                        {operation.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      {isAdmin && (
-                        <div className="flex items-center justify-end gap-1">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setOpToEdit(operation);
-                              setIsModalOpen(true);
-                            }}
-                            className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-blue-600"
-                            title="Edit Operation"
-                          >
-                            <Edit2 className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(operation)}
-                            className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-red-600"
-                            title="Delete Operation"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })
+              operations.map((operation) => (
+                <tr key={operation._id} className="hover:bg-slate-50/80 transition-colors">
+                  <td className="px-4 py-3 font-bold text-slate-900 flex items-center gap-1.5">
+                    <Layers className="h-4 w-4 text-slate-400" />
+                    <span className="capitalize">{operation.name}</span>
+                  </td>
+                  <td className="px-4 py-3 text-slate-700 capitalize">{operation.articleNumber || "-"}</td>
+                  <td className="px-4 py-3 text-slate-700 flex items-center gap-1">
+                    <Building2 className="h-3 w-3 text-purple-500" />
+                    <span className="capitalize">{operation.departmentName || "-"}</span>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    {isAdmin && (
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOpToEdit(operation);
+                            setIsModalOpen(true);
+                          }}
+                          className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-blue-600"
+                          title="Edit Operation"
+                        >
+                          <Edit2 className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(operation)}
+                          className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-red-600"
+                          title="Delete Operation"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))
             )}
           </tbody>
         </table>
       </div>
 
-      <div className="flex items-center justify-between text-[11px] text-slate-500">
-        <span>Total: {total}</span>
-        <span>Page: {page}</span>
-      </div>
+      {/* Shared Pagination Component */}
+      <Pagination
+        currentPage={page}
+        pageSize={limit}
+        total={total}
+        onPageChange={handlePageChange}
+        onPageSizeChange={handleLimitChange}
+        itemLabel="operations"
+      />
 
       <OperationModal
         isOpen={isModalOpen}

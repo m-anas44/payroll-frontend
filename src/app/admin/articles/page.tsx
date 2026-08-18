@@ -2,8 +2,14 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import { useAuthStore } from "@/store/auth.store";
-import { ArticleHandler } from "@/handlers/article.handler";
+import {
+  createArticle,
+  deleteArticle,
+  getArticles,
+  updateArticle,
+} from "@/handlers/article.handler";
 import ArticleModal from "@/components/master/ArticleModal";
+import Pagination from "@/components/common/Pagination";
 import { Article } from "@/types/article";
 import { Package, Plus, Edit2, Trash2, Search } from "lucide-react";
 
@@ -23,15 +29,20 @@ export default function ArticlesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const loadArticles = useCallback(
-    async (nextPage = 1, customSearch?: string) => {
+    async (
+      nextPage = 1,
+      customSearch?: string,
+      customLimit?: number
+    ) => {
       try {
         setIsLoading(true);
         setError("");
 
-        const result = await ArticleHandler.getArticles({
-          search: customSearch?.trim() || submittedSearch.trim() || undefined,
+        const activeLimit = customLimit ?? limit;
+        const result = await getArticles({
+          search: (customSearch?.trim() ?? submittedSearch.trim()) || undefined,
           page: nextPage,
-          limit,
+          limit: activeLimit,
         });
 
         setArticles(result.items);
@@ -54,6 +65,7 @@ export default function ArticlesPage() {
   const handleSearch = () => {
     const trimmed = searchQuery.trim();
     setSubmittedSearch(trimmed);
+    setPage(1);
     loadArticles(1, trimmed);
   };
 
@@ -64,13 +76,26 @@ export default function ArticlesPage() {
     loadArticles(1, "");
   };
 
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    loadArticles(newPage, submittedSearch);
+  };
+
+  const handleLimitChange = (newSize: number) => {
+    setLimit(newSize);
+    setPage(1);
+    loadArticles(1, submittedSearch, newSize);
+  };
+
   const handleDelete = async (article: Article) => {
-    if (!confirm(`Are you sure you want to delete article "${article.name}"?`)) {
+    if (
+      !confirm(`Are you sure you want to delete article "${article.name}"?`)
+    ) {
       return;
     }
 
     try {
-      await ArticleHandler.deleteArticle(article.id);
+      await deleteArticle(article._id);
       await loadArticles(page, submittedSearch);
     } catch (err: any) {
       setError(err.message || "Unable to delete article.");
@@ -85,9 +110,9 @@ export default function ArticlesPage() {
   }) => {
     try {
       if (articleToEdit) {
-        await ArticleHandler.updateArticle(articleToEdit.id, payload);
+        await updateArticle(articleToEdit._id, payload);
       } else {
-        await ArticleHandler.createArticle(payload);
+        await createArticle(payload);
       }
 
       setIsModalOpen(false);
@@ -102,8 +127,12 @@ export default function ArticlesPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Article Catalog</h1>
-          <p className="text-xs text-slate-500 mt-1">Manage article numbers, names, and status.</p>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+            Article Catalog
+          </h1>
+          <p className="text-xs text-slate-500 mt-1">
+            Manage article numbers, names, and status.
+          </p>
         </div>
 
         {isAdmin && (
@@ -128,6 +157,7 @@ export default function ArticlesPage() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
             placeholder="Search article number or name..."
             className="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-slate-300 bg-white text-slate-900 focus:outline-none focus:border-blue-600"
           />
@@ -135,7 +165,7 @@ export default function ArticlesPage() {
         <button
           type="button"
           onClick={handleSearch}
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-900 px-3 py-2 text-[11px] font-bold text-white hover:bg-slate-700"
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-900 px-3 py-2 text-[11px] font-bold text-white hover:bg-slate-700 transition-colors"
         >
           <Search className="h-3.5 w-3.5" />
           Search
@@ -143,14 +173,16 @@ export default function ArticlesPage() {
         <button
           type="button"
           onClick={handleReset}
-          className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-[11px] font-bold text-slate-700 hover:bg-slate-50"
+          className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-[11px] font-bold text-slate-700 hover:bg-slate-50 transition-colors"
         >
           Reset
         </button>
       </div>
 
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{error}</div>
+        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+          {error}
+        </div>
       )}
 
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-xs">
@@ -167,23 +199,45 @@ export default function ArticlesPage() {
           <tbody className="divide-y divide-slate-100 font-medium">
             {isLoading ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-slate-400 font-medium">Loading articles...</td>
+                <td
+                  colSpan={5}
+                  className="px-4 py-8 text-center text-slate-400 font-medium"
+                >
+                  Loading articles...
+                </td>
               </tr>
             ) : articles.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-slate-400 font-medium">No articles found.</td>
+                <td
+                  colSpan={5}
+                  className="px-4 py-8 text-center text-slate-400 font-medium"
+                >
+                  No articles found.
+                </td>
               </tr>
             ) : (
               articles.map((article) => (
-                <tr key={article.id} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="px-4 py-3 font-mono font-bold text-blue-600">{article.articleNumber}</td>
+                <tr
+                  key={article._id}
+                  className="hover:bg-slate-50/80 transition-colors"
+                >
+                  <td className="px-4 py-3 font-mono font-bold text-blue-600">
+                    {article.articleNumber}
+                  </td>
                   <td className="px-4 py-3 font-bold text-slate-900 flex items-center gap-1.5">
                     <Package className="h-4 w-4 text-slate-400" />
-                    <span>{article.name}</span>
+                    <span>{article.name || "-"}</span>
                   </td>
-                  <td className="px-4 py-3 text-slate-600">{article.description || "-"}</td>
+                  <td className="px-4 py-3 text-slate-600">
+                    {article.description || "-"}
+                  </td>
                   <td className="px-4 py-3">
-                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ${article.status === "Active" ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-700"}`}>
+                    <span
+                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ${article.status === "Active"
+                          ? "bg-emerald-50 text-emerald-700"
+                          : "bg-slate-100 text-slate-700"
+                        }`}
+                    >
                       {article.status}
                     </span>
                   </td>
@@ -196,7 +250,7 @@ export default function ArticlesPage() {
                             setArticleToEdit(article);
                             setIsModalOpen(true);
                           }}
-                          className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-blue-600"
+                          className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-blue-600 transition-colors"
                           title="Edit Article"
                         >
                           <Edit2 className="h-3.5 w-3.5" />
@@ -204,7 +258,7 @@ export default function ArticlesPage() {
                         <button
                           type="button"
                           onClick={() => handleDelete(article)}
-                          className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-red-600"
+                          className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-red-600 transition-colors"
                           title="Delete Article"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -217,14 +271,20 @@ export default function ArticlesPage() {
             )}
           </tbody>
         </table>
-      </div>
 
-      <div className="flex items-center justify-between text-[11px] text-slate-500">
-        <span>Total: {total}</span>
-        <span>Page: {page}</span>
+        <Pagination
+          currentPage={page}
+          pageSize={limit}
+          total={total}
+          onPageChange={handlePageChange}
+          onPageSizeChange={handleLimitChange}
+          pageSizeOptions={[5, 10, 25, 50, 100]}
+          itemLabel="articles"
+        />
       </div>
 
       <ArticleModal
+        key={isModalOpen ? (articleToEdit ? articleToEdit._id : "create-new") : "closed"}
         isOpen={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);

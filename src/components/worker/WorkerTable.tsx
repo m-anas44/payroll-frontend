@@ -10,6 +10,7 @@ import {
   ShieldAlert,
   Clock,
 } from "lucide-react";
+import Pagination from "../common/Pagination";
 
 interface WorkerTableProps {
   workers: Worker[];
@@ -152,53 +153,14 @@ export default function WorkerTable({
               </table>
             )}
           </div>
-          <div className="flex flex-col items-center justify-between gap-4 border-t border-slate-200 px-4 py-3 text-xs text-slate-500 sm:flex-row">
-            <div>
-              Showing{" "}
-              <span className="font-semibold text-slate-900">{total === 0 ? 0 : startIndex}</span>{" "}
-              to{" "}
-              <span className="font-semibold text-slate-900">{Math.min(startIndex + workers.length - 1, total)}</span>{" "}
-              of{" "}
-              <span className="font-semibold text-slate-900">{total}</span>{" "}
-              workers
-            </div>
-
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-1.5">
-                <span>Rows:</span>
-                <select
-                  value={pageSize}
-                  onChange={(e) => onPageSizeChange(Number(e.target.value))}
-                  className="rounded border border-slate-200 bg-white px-2 py-1 text-xs"
-                >
-                  <option value={5}>5</option>
-                  <option value={10}>10</option>
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                </select>
-              </div>
-
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => onPageChange(Math.max(1, currentPage - 1))}
-                  disabled={activePage === 1}
-                  className="rounded border border-slate-200 px-2.5 py-1 font-medium hover:bg-slate-50 disabled:opacity-40"
-                >
-                  Previous
-                </button>
-                <span className="px-2 font-semibold">
-                  {activePage} / {totalPages}
-                </span>
-                <button
-                  onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
-                  disabled={activePage === totalPages || total === 0}
-                  className="rounded border border-slate-200 px-2.5 py-1 font-medium hover:bg-slate-50 disabled:opacity-40"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          </div>
+          <Pagination
+            currentPage={currentPage}
+            pageSize={pageSize}
+            total={total}
+            onPageChange={onPageChange}
+            onPageSizeChange={onPageSizeChange}
+            itemLabel="workers"
+          />
         </>
       )}
     </>

@@ -1,9 +1,9 @@
 export interface Operation {
-  id: string;
+  _id: string;
   code?: string;
   name: string;
   articleId: string;
-  articleName: string;
+  articleNumber: string;
   departmentId: string;
   departmentName: string;
   status: "Active" | "Inactive";

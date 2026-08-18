@@ -35,7 +35,7 @@ export default function ArticleModal({
   });
 
   const [prevId, setPrevId] = useState<string | null>(null);
-  const currentId = articleToEdit ? articleToEdit.id : "new";
+  const currentId = articleToEdit ? articleToEdit._id : "new";
 
   if (currentId !== prevId) {
     setPrevId(currentId);
@@ -94,10 +94,9 @@ export default function ArticleModal({
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">Article Name *</label>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Article Name</label>
             <input
               type="text"
-              required
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               placeholder="e.g. Classic Leather Loafer"
