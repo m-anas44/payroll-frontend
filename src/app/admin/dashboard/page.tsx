@@ -5,7 +5,7 @@ import StatCard from "@/components/dashboard/StatCard";
 import QuickActions from "@/components/dashboard/QuickActions";
 import RecentActivity from "@/components/dashboard/RecentActivity";
 import WorkerModal from "@/components/worker/WorkerModal";
-import ProductionModal from "@/components/production/ProductionModal";
+import ProductionModal from "@/components/production/BatchProductionModal";
 import GeneratePayrollModal from "@/components/payroll/GeneratePayrollModal";
 import { useWorkerStore } from "@/store/worker.store";
 import { useProductionStore } from "@/store/production.store";

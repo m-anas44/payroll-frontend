@@ -4,7 +4,6 @@ export type WorkerStatus = "active" | "inactive" | "on_leave" | "terminated";
 
 export interface Worker {
   id: string;
-  workerCode?: string;
   name: string;
   cnic: string;
   fatherHusbandName: string;

@@ -7,7 +7,7 @@ import { useAuthStore } from "@/store/auth.store";
 import { ProductionHandler } from "@/handlers/production.handler";
 import { formatDate } from "@/lib/format-date";
 import { formatCurrency, formatQuantity } from "@/lib/currency";
-import ProductionModal from "./ProductionModal";
+import ProductionModal from "./BatchProductionModal";
 import { Edit2, Trash2, Calendar, Package, Layers } from "lucide-react";
 
 export default function ProductionTable() {

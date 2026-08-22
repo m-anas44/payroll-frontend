@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import ProductionFilter from "@/components/production/ProductionFilter";
 import ProductionTable from "@/components/production/ProductionTable";
-import ProductionModal from "@/components/production/ProductionModal";
+import ProductionModal from "@/components/production/BatchProductionModal";
 import ExportButton from "@/components/excel/ExportButton";
 import { ClipboardPlus } from "lucide-react";
 
