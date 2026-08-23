@@ -1,21 +1,31 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { PieceRate } from "@/types/rate";
-import { RateHandler } from "@/handlers/rate.handler";
 import { useMasterDataStore } from "@/store/masterData.store";
 import { X, Coins, AlertCircle, History } from "lucide-react";
+import { addRate, updateRate } from "@/handlers/rate.handler";
 
 interface RateModalProps {
   isOpen: boolean;
   onClose: () => void;
   rateToEdit?: PieceRate | null;
+  onSuccess: () => Promise<void>;
 }
+
+const getTodayFormatted = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 
 export default function RateModal({
   isOpen,
   onClose,
   rateToEdit,
+  onSuccess
 }: RateModalProps) {
   const { operations } = useMasterDataStore();
   const [errorMessage, setErrorMessage] = useState("");
@@ -23,60 +33,62 @@ export default function RateModal({
   const [formData, setFormData] = useState({
     operationId: "",
     ratePerPiece: 25.0,
-    effectiveFrom: new Date().toISOString().split("T")[0],
+    effectiveFrom: getTodayFormatted(),
     notes: "",
   });
 
-  const [prevId, setPrevId] = useState<string | null>(null);
-  const currentId = rateToEdit ? rateToEdit.id : "new";
+  // Sync form state safely whenever modal opens or rateToEdit changes
+  useEffect(() => {
+    if (!isOpen) return;
 
-  if (currentId !== prevId) {
-    setPrevId(currentId);
+    const todayStr = getTodayFormatted();
+
     if (rateToEdit) {
       setFormData({
         operationId: rateToEdit.operationId,
         ratePerPiece: rateToEdit.ratePerPiece,
-        effectiveFrom: new Date().toISOString().split("T")[0],
-        notes: `Revised piece rate effective ${new Date().toISOString().split("T")[0]}`,
+        effectiveFrom: todayStr,
+        notes: `Revised piece rate effective ${todayStr}`,
       });
     } else {
       setFormData({
-        operationId: operations[0]?.id || "",
+        operationId: operations[0]?._id || "",
         ratePerPiece: 25.0,
-        effectiveFrom: new Date().toISOString().split("T")[0],
+        effectiveFrom: todayStr,
         notes: "",
       });
     }
     setErrorMessage("");
-  }
+  }, [isOpen, rateToEdit, operations]);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
 
-    const op = operations.find((o) => o.id === formData.operationId);
+    const op = operations.find((o) => o._id === formData.operationId);
 
     if (rateToEdit) {
-      const res = RateHandler.updateRate(
+      const res = await updateRate(
         rateToEdit.id,
         formData.ratePerPiece,
         formData.effectiveFrom,
-        "Admin"
+        "Admin",
+        formData.notes
       );
       if (!res.success) {
         setErrorMessage(res.message);
         return;
       }
     } else {
-      const res = RateHandler.addRate(
+      const res = await addRate(
         {
           operationId: formData.operationId,
-          operationCode: op?.operationCode,
+          operationCode: op?.code,
           operationName: op?.name,
           articleId: op?.articleId,
-          articleName: op?.articleName,
+          articleName: op?.articleNumber,
           ratePerPiece: formData.ratePerPiece,
           effectiveFrom: formData.effectiveFrom,
           notes: formData.notes,
@@ -95,15 +107,15 @@ export default function RateModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-200 ">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-4 ">
+      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-200">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
           <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
             <Coins className="h-5 w-5 text-amber-500" />
             {rateToEdit ? "Revise Approved Piece Rate" : "Define New Piece Rate"}
           </h3>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 "
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
           >
             <X className="h-5 w-5" />
           </button>
@@ -124,7 +136,7 @@ export default function RateModal({
         )}
 
         {errorMessage && (
-          <div className="mt-3 flex items-center gap-2 rounded-lg bg-red-50 p-3 text-xs font-semibold text-red-700 ">
+          <div className="mt-3 flex items-center gap-2 rounded-lg bg-red-50 p-3 text-xs font-semibold text-red-700">
             <AlertCircle className="h-4 w-4 shrink-0" />
             <span>{errorMessage}</span>
           </div>
@@ -139,12 +151,14 @@ export default function RateModal({
               disabled={!!rateToEdit}
               required
               value={formData.operationId}
-              onChange={(e) => setFormData({ ...formData, operationId: e.target.value })}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, operationId: e.target.value }))
+              }
               className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:bg-white focus:outline-none disabled:opacity-60"
             >
               {operations.map((op) => (
-                <option key={op.id} value={op.id}>
-                  {op.operationCode} - {op.name} ({op.articleName})
+                <option key={op._id} value={op._id}>
+                  {op.code} - {op.name} ({op.articleNumber})
                 </option>
               ))}
             </select>
@@ -162,9 +176,12 @@ export default function RateModal({
                 required
                 value={formData.ratePerPiece}
                 onChange={(e) =>
-                  setFormData({ ...formData, ratePerPiece: parseFloat(e.target.value) || 0 })
+                  setFormData((prev) => ({
+                    ...prev,
+                    ratePerPiece: e.target.valueAsNumber || 0,
+                  }))
                 }
-                className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:bg-white focus:outline-none font-bold text-emerald-700 "
+                className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs focus:border-blue-600 focus:bg-white focus:outline-none font-bold text-emerald-700"
               />
             </div>
 
@@ -176,8 +193,10 @@ export default function RateModal({
                 type="date"
                 required
                 value={formData.effectiveFrom}
-                onChange={(e) => setFormData({ ...formData, effectiveFrom: e.target.value })}
-                className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:bg-white focus:outline-none "
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, effectiveFrom: e.target.value }))
+                }
+                className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:bg-white focus:outline-none"
               />
             </div>
           </div>
@@ -189,17 +208,19 @@ export default function RateModal({
             <textarea
               rows={2}
               value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, notes: e.target.value }))
+              }
               placeholder="e.g. Approved rate increase by Management Board..."
-              className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:bg-white focus:outline-none "
+              className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:bg-white focus:outline-none"
             />
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 ">
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 "
+              className="rounded-lg px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100"
             >
               Cancel
             </button>
