@@ -1,234 +1,242 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { PieceRate } from "@/types/rate";
-import { useMasterDataStore } from "@/store/masterData.store";
-import { X, Coins, AlertCircle, History } from "lucide-react";
-import { addRate, updateRate } from "@/handlers/rate.handler";
+import CustomSelect, { SelectOption } from "@/components/common/CustomSelect";
+import { X, Coins, AlertCircle, Layers, Banknote } from "lucide-react";
+import { createRate, updateRate } from "@/handlers/rate.handler";
 
 interface RateModalProps {
   isOpen: boolean;
   onClose: () => void;
   rateToEdit?: PieceRate | null;
+  operations: any[];
   onSuccess: () => Promise<void>;
 }
-
-const getTodayFormatted = () => {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, "0");
-  const day = String(today.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
 
 export default function RateModal({
   isOpen,
   onClose,
   rateToEdit,
-  onSuccess
+  operations,
+  onSuccess,
 }: RateModalProps) {
-  const { operations } = useMasterDataStore();
   const [errorMessage, setErrorMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
     operationId: "",
-    ratePerPiece: 25.0,
-    effectiveFrom: getTodayFormatted(),
-    notes: "",
+    amount: "" as number | string,
   });
 
-  // Sync form state safely whenever modal opens or rateToEdit changes
+  const operationOptions: SelectOption[] = operations.map((op) => ({
+    value: op._id,
+    label: `${op.code} - ${op.name}`,
+    sublabel: op.articleNumber ? `Article: ${op.articleNumber}` : undefined,
+  }));
+
   useEffect(() => {
     if (!isOpen) return;
-
-    const todayStr = getTodayFormatted();
 
     if (rateToEdit) {
       setFormData({
         operationId: rateToEdit.operationId,
-        ratePerPiece: rateToEdit.ratePerPiece,
-        effectiveFrom: todayStr,
-        notes: `Revised piece rate effective ${todayStr}`,
+        amount: rateToEdit.amount ?? "",
       });
     } else {
       setFormData({
         operationId: operations[0]?._id || "",
-        ratePerPiece: 25.0,
-        effectiveFrom: todayStr,
-        notes: "",
+        amount: "",
       });
     }
+
     setErrorMessage("");
   }, [isOpen, rateToEdit, operations]);
 
   if (!isOpen) return null;
 
+  const selectedOpDetails = operations.find(
+    (op) => String(op._id) === String(formData.operationId)
+  );
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
 
-    const op = operations.find((o) => o._id === formData.operationId);
-
-    if (rateToEdit) {
-      const res = await updateRate(
-        rateToEdit.id,
-        formData.ratePerPiece,
-        formData.effectiveFrom,
-        "Admin",
-        formData.notes
-      );
-      if (!res.success) {
-        setErrorMessage(res.message);
-        return;
-      }
-    } else {
-      const res = await addRate(
-        {
-          operationId: formData.operationId,
-          operationCode: op?.code,
-          operationName: op?.name,
-          articleId: op?.articleId,
-          articleName: op?.articleNumber,
-          ratePerPiece: formData.ratePerPiece,
-          effectiveFrom: formData.effectiveFrom,
-          notes: formData.notes,
-          status: "Active",
-        },
-        "Admin"
-      );
-      if (!res.success) {
-        setErrorMessage(res.message);
-        return;
-      }
+    const numericAmount = Number(formData.amount);
+    if (isNaN(numericAmount) || numericAmount <= 0) {
+      setErrorMessage("Please enter a valid amount greater than 0.");
+      return;
     }
 
-    onClose();
+    setIsSubmitting(true);
+
+    try {
+      if (rateToEdit) {
+        // Updating creates a revised rate; backend marks old rate superseded
+        const res = await updateRate(rateToEdit._id, {
+          amount: numericAmount,
+        });
+
+        if (!res.success) {
+          setErrorMessage(res.message || "Failed to revise piece rate.");
+          return;
+        }
+      } else {
+        const operation = operations.find(
+          (item) => item._id === formData.operationId
+        );
+
+        if (!operation) {
+          setErrorMessage("Please select a valid operation.");
+          return;
+        }
+
+        const res = await createRate({
+          departmentId: operation.departmentId,
+          articleId: operation.articleId,
+          operationId: operation._id,
+          amount: numericAmount,
+        });
+
+        if (!res.success) {
+          setErrorMessage(res.message || "Failed to create piece rate.");
+          return;
+        }
+      }
+
+      await onSuccess();
+      onClose();
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-100">
+        {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-          <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-            <Coins className="h-5 w-5 text-amber-500" />
-            {rateToEdit ? "Revise Approved Piece Rate" : "Define New Piece Rate"}
-          </h3>
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+              <Coins className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-900">
+                {rateToEdit ? "Revise Piece Rate" : "Define Piece Rate"}
+              </h3>
+              <p className="text-[11px] text-slate-500">
+                {rateToEdit
+                  ? "Revising will supersede the active rate automatically."
+                  : "Set operation payment per completed unit."}
+              </p>
+            </div>
+          </div>
+
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        {rateToEdit && (
-          <div className="mt-3 p-3 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800 flex items-start gap-2">
-            <History className="h-4 w-4 shrink-0 mt-0.5 text-amber-600" />
-            <div>
-              <p className="font-bold">Historical Rate Preservation Rule:</p>
-              <p className="text-[11px] mt-0.5">
-                Updating this rate will archive the previous rate of{" "}
-                <span className="font-extrabold">Rs. {rateToEdit.ratePerPiece}</span>.
-                Existing production logs will permanently retain their original rates.
-              </p>
-            </div>
-          </div>
-        )}
-
         {errorMessage && (
-          <div className="mt-3 flex items-center gap-2 rounded-lg bg-red-50 p-3 text-xs font-semibold text-red-700">
+          <div className="mt-4 flex items-center gap-2 rounded-xl bg-rose-50 p-3 text-xs font-medium text-rose-700 border border-rose-200/60">
             <AlertCircle className="h-4 w-4 shrink-0" />
             <span>{errorMessage}</span>
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
-              Select Operation *
-            </label>
-            <select
-              disabled={!!rateToEdit}
-              required
-              value={formData.operationId}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, operationId: e.target.value }))
-              }
-              className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:bg-white focus:outline-none disabled:opacity-60"
-            >
-              {operations.map((op) => (
-                <option key={op._id} value={op._id}>
-                  {op.code} - {op.name} ({op.articleNumber})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
+          {/* Operation Selector / Display */}
+          {rateToEdit ? (
+            <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Target Operation
+              </span>
+              <div className="mt-1 flex items-center justify-between">
+                <div className="flex items-center gap-2 font-bold text-xs text-slate-800">
+                  <Layers className="h-4 w-4 text-emerald-600" />
+                  {selectedOpDetails
+                    ? `${selectedOpDetails.code} - ${selectedOpDetails.name}`
+                    : "Selected Operation"}
+                </div>
+                {selectedOpDetails?.articleNumber && (
+                  <span className="rounded-md bg-white px-2 py-0.5 text-[10px] font-mono text-slate-500 border border-slate-200">
+                    Art: {selectedOpDetails.articleNumber}
+                  </span>
+                )}
+              </div>
+            </div>
+          ) : (
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                Rate Per Piece (Rs.) *
-              </label>
+              <CustomSelect
+                label="Select Operation"
+                required
+                value={formData.operationId}
+                options={operationOptions}
+                placeholder="Choose an operation..."
+                searchPlaceholder="Search operations by code or name..."
+                onChange={(value) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    operationId: String(value),
+                  }))
+                }
+              />
+            </div>
+          )}
+
+          {/* Amount Field */}
+          <div>
+            <label className="mb-1.5 block text-xs font-bold text-slate-700">
+              Rate Amount Per Piece (PKR) <span className="text-rose-500">*</span>
+            </label>
+
+            <div className="relative">
+              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                <Banknote className="h-4 w-4" />
+              </div>
               <input
                 type="number"
-                step="0.25"
-                min="0.1"
+                step="0.01"
+                min="0.01"
                 required
-                value={formData.ratePerPiece}
+                placeholder="0.00"
+                value={formData.amount}
                 onChange={(e) =>
                   setFormData((prev) => ({
                     ...prev,
-                    ratePerPiece: e.target.valueAsNumber || 0,
+                    amount: e.target.value,
                   }))
                 }
-                className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs focus:border-blue-600 focus:bg-white focus:outline-none font-bold text-emerald-700"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                Effective Date *
-              </label>
-              <input
-                type="date"
-                required
-                value={formData.effectiveFrom}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, effectiveFrom: e.target.value }))
-                }
-                className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:bg-white focus:outline-none"
+                className="w-full rounded-xl border border-slate-200 pl-9 pr-3 py-2.5 text-xs font-semibold text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition"
               />
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
-              Revision Approval Notes
-            </label>
-            <textarea
-              rows={2}
-              value={formData.notes}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, notes: e.target.value }))
-              }
-              placeholder="e.g. Approved rate increase by Management Board..."
-              className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:bg-white focus:outline-none"
-            />
-          </div>
-
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+          {/* Actions */}
+          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100"
+              disabled={isSubmitting}
+              className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition"
             >
               Cancel
             </button>
+
             <button
               type="submit"
-              className="rounded-lg bg-emerald-600 px-5 py-2 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 transition-colors"
+              disabled={isSubmitting}
+              className="rounded-xl bg-emerald-600 px-5 py-2 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50 transition shadow-sm"
             >
-              Save Piece Rate
+              {isSubmitting
+                ? "Saving..."
+                : rateToEdit
+                ? "Confirm Revision"
+                : "Save Rate"}
             </button>
           </div>
         </form>

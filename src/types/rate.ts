@@ -1,16 +1,23 @@
+export type RateStatus = "active" | "inactive" | "superseded";
+
 export interface PieceRate {
-  id: string;
+  _id: string;
+  departmentId: string;
+  articleId: string;
   operationId: string;
-  operationCode?: string;
-  operationName?: string;
-  articleId?: string;
-  articleName?: string;
-  ratePerPiece: number;
-  effectiveFrom: string; // YYYY-MM-DD
-  effectiveTo?: string; // YYYY-MM-DD or null if active
-  notes?: string;
-  status: "Active" | "Superceded";
+  amount: number;
+  effectiveFrom: string;
+  effectiveTo?: string | null;
+  status: RateStatus;
   createdAt: string;
+  updatedAt: string;
+}
+
+export interface RateListResponse {
+  total: number;
+  page: number;
+  limit: number;
+  items: PieceRate[];
 }
 
 export interface RateHistoryItem {
