@@ -22,6 +22,8 @@ export interface CreateRatePayload {
   articleId: string;
   operationId: string;
   amount: number;
+  effectiveFrom?: string;
+  effectiveTo?: string;
 }
 
 export interface UpdateRatePayload {

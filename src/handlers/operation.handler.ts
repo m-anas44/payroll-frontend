@@ -19,13 +19,10 @@ export async function getOperations(params?: {
 }
 
 export async function createOperation(
-  data: Partial<Operation> & { name: string; articleId: string; departmentId: string }
+  data: Partial<Operation> & { name: string; departmentId: string }
 ) {
   if (!data.name?.trim()) {
     throw new Error("Operation name is required.");
-  }
-  if (!data.articleId) {
-    throw new Error("Article is required.");
   }
   if (!data.departmentId) {
     throw new Error("Department is required.");
@@ -33,7 +30,6 @@ export async function createOperation(
 
   const payload = {
     name: data.name.trim(),
-    articleId: data.articleId,
     departmentId: data.departmentId,
     status: data.status === "Inactive" ? "inactive" : "active",
   };
@@ -50,9 +46,6 @@ export async function updateOperation(id: string, updates: Partial<Operation>) {
   }
   if (updates.code !== undefined) {
     payload.code = updates.code?.trim() || undefined;
-  }
-  if (updates.articleId) {
-    payload.articleId = updates.articleId;
   }
   if (updates.departmentId) {
     payload.departmentId = updates.departmentId;

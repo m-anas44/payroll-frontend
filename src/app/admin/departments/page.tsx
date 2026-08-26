@@ -101,7 +101,7 @@ export default function DepartmentsPage() {
 
               return (
                 <div
-                  key={dept.id}
+                  key={dept._id}
                   className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs flex flex-col justify-between"
                 >
                   <div>
@@ -137,7 +137,7 @@ export default function DepartmentsPage() {
                         Edit
                       </button>
                       <button
-                        onClick={() => handleDelete(dept.id, dept.name)}
+                        onClick={() => handleDelete(dept._id, dept.name)}
                         className="flex items-center gap-1 text-xs font-bold text-slate-600 hover:text-red-600 ml-2"
                       >
                         <Trash2 className="h-3.5 w-3.5" />

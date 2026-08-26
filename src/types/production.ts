@@ -1,4 +1,8 @@
 export interface ProductionEntry {
+  totalAmount(totalAmount: any): unknown;
+  _id: string;
+  productionDate: string;
+  appliedRate: number;
   id: string;
   date: string; // YYYY-MM-DD
   workerId: string;
@@ -21,6 +25,9 @@ export interface ProductionEntry {
 }
 
 export interface ProductionFilterState {
+  status: string | undefined;
+  page: number;
+  limit: number;
   startDate?: string;
   endDate?: string;
   workerId?: string;

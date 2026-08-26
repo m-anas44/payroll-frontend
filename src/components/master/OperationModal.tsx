@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Article } from "@/types/article";
 import { Department } from "@/types/department";
 import { Operation } from "@/types/operation";
 import { X, Layers } from "lucide-react";
@@ -11,11 +10,9 @@ interface OperationModalProps {
   isOpen: boolean;
   onClose: () => void;
   operationToEdit?: Operation | null;
-  articles: Article[];
   departments: Department[];
   onSubmit: (payload: {
     name: string;
-    articleId: string;
     departmentId: string;
   }) => Promise<void> | void;
 }
@@ -24,17 +21,14 @@ export default function OperationModal({
   isOpen,
   onClose,
   operationToEdit,
-  articles,
   departments,
   onSubmit,
 }: OperationModalProps) {
   const [formData, setFormData] = useState<{
     name: string;
-    articleId: string;
     departmentId: string;
   }>({
     name: "",
-    articleId: "",
     departmentId: "",
   });
 
@@ -42,33 +36,27 @@ export default function OperationModal({
     if (!isOpen) return;
 
     if (operationToEdit) {
-      const selectedArticleId =
-        (operationToEdit as any).articleId ||
-        "";
       const selectedDepartmentId =
         (operationToEdit as any).departmentId ||
         "";
         
       setFormData({
         name: operationToEdit.name || "",
-        articleId: String(selectedArticleId),
         departmentId: String(selectedDepartmentId),
       });
     } else {
-      const defaultArticleId = (articles[0] as any)?._id || "";
       const defaultDeptId = (departments[0] as any)?._id || "";
 
       setFormData({
         name: "",
-        articleId: String(defaultArticleId),
         departmentId: String(defaultDeptId),
       });
     }
-  }, [isOpen, operationToEdit, articles, departments]);
+  }, [isOpen, operationToEdit, departments]);
 
   if (!isOpen) return null;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault();
     await onSubmit(formData);
   };
@@ -105,23 +93,6 @@ export default function OperationModal({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <CustomSelect
-                label="Associated Article"
-                required
-                options={articles.map((a: any) => ({
-                  label: a.name,
-                  sublabel: a.articleNumber,
-                  value: String(a.id || a._id),
-                }))}
-                value={formData.articleId}
-                onChange={(val) => setFormData({ ...formData, articleId: String(val) })}
-                placeholder="Select Article..."
-                searchPlaceholder="Search by name or number..."
-              />
-            </div>
-
             <div>
               <CustomSelect
                 label="Department"
@@ -136,7 +107,6 @@ export default function OperationModal({
                 searchPlaceholder="Search department..."
               />
             </div>
-          </div>
 
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
             <button

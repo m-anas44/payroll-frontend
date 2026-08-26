@@ -2,7 +2,7 @@ import axios from "axios";
 import { Department } from "@/types/department";
 
 const normalizeDepartment = (item: any): Department => ({
-  id: item?._id || item?.id || "",
+  _id: item?._id || item?.id || "",
   code: item?.code?.trim() || "NO-CODE",
   name: item?.name || "Unnamed Department",
   description: item?.description || "Operational unit for piece rate manufacturing.",

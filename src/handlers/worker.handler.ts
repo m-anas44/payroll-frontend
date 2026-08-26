@@ -21,15 +21,14 @@ const normalizeGender = (value?: string): WorkerGender => {
 const normalizeStatus = (value?: string): WorkerStatus => {
   const normalized = String(value || "").toLowerCase();
 
-  if (normalized === "inactive") return "Inactive";
-  if (normalized === "on_leave" || normalized === "on leave") return "On Leave";
-  if (normalized === "terminated") return "Terminated";
-  return "Active";
+  if (normalized === "inactive") return "inactive";
+  if (normalized === "on_leave" || normalized === "on leave") return "on_leave";
+  if (normalized === "terminated") return "terminated";
+  return "active";
 };
 
 const normalizeWorker = (item: any): Worker => ({
   id: item?._id || item?.id || "",
-  workerCode: item?.workerCode || item?.worker_code || `W-${String(item?._id || item?.id || "").slice(-4) || "0001"}`,
   name: item?.name || "Unnamed Worker",
   cnic: item?.cnic || "",
   fatherHusbandName: item?.fatherHusbandName || item?.father_husband_name || "",
@@ -67,13 +66,7 @@ const toApiPayload = (data: any) => {
             ? "no"
             : data.policeVerification || "no",
     status:
-      data.status === "Inactive"
-        ? "inactive"
-        : data.status === "On Leave"
-          ? "on_leave"
-          : data.status === "Terminated"
-            ? "terminated"
-            : "active",
+      data.status || "active"
   };
 
   if (!payload.dateOfJoining) {

@@ -73,7 +73,6 @@ export default function RateModal({
 
     try {
       if (rateToEdit) {
-        // Updating creates a revised rate; backend marks old rate superseded
         const res = await updateRate(rateToEdit._id, {
           amount: numericAmount,
         });
@@ -84,7 +83,7 @@ export default function RateModal({
         }
       } else {
         const operation = operations.find(
-          (item) => item._id === formData.operationId
+          (item) => String(item._id) === String(formData.operationId)
         );
 
         if (!operation) {

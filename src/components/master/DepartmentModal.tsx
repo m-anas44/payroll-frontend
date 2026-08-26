@@ -19,11 +19,13 @@ export default function DepartmentModal({
   onSaved,
 }: DepartmentModalProps) {
   const [formData, setFormData] = useState<{
+    _id: string;
     code: string;
     name: string;
     description: string;
     status: "Active" | "Inactive";
   }>({
+    _id: "",
     code: "",
     name: "",
     description: "",
@@ -33,12 +35,13 @@ export default function DepartmentModal({
   const [errorMessage, setErrorMessage] = useState("");
 
   const [prevId, setPrevId] = useState<string | null>(null);
-  const currentId = deptToEdit ? deptToEdit.id : "new";
+  const currentId = deptToEdit ? deptToEdit._id : "new";
 
   if (currentId !== prevId) {
     setPrevId(currentId);
     if (deptToEdit) {
       setFormData({
+        _id: deptToEdit._id,
         code: deptToEdit.code,
         name: deptToEdit.name,
         description: deptToEdit.description || "",
@@ -46,6 +49,7 @@ export default function DepartmentModal({
       });
     } else {
       setFormData({
+        _id: "",
         code: "",
         name: "",
         description: "",
@@ -69,7 +73,7 @@ export default function DepartmentModal({
       setIsSubmitting(true);
 
       if (deptToEdit) {
-        await updateDepartment(deptToEdit.id, formData);
+        await updateDepartment(deptToEdit._id, formData);
       } else {
         await createDepartment(formData);
       }

@@ -4,6 +4,7 @@ export interface PieceRate {
   _id: string;
   departmentId: string;
   articleId: string;
+  articleNumber: string;
   operationId: string;
   amount: number;
   effectiveFrom: string;

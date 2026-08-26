@@ -2,12 +2,10 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import { useAuthStore } from "@/store/auth.store";
-import { getArticles } from "@/handlers/article.handler";
 import { createOperation, deleteOperation, getOperations, updateOperation } from "@/handlers/operation.handler";
 import { getDepartments } from "@/handlers/department.handler";
 import OperationModal from "@/components/master/OperationModal";
-import Pagination from "@/components/common/Pagination"; // Adjust path if located elsewhere (e.g., @/components/shared/Pagination)
-import { Article } from "@/types/article";
+import Pagination from "@/components/common/Pagination";
 import { Department } from "@/types/department";
 import { Operation } from "@/types/operation";
 import {
@@ -24,7 +22,6 @@ export default function OperationsPage() {
   const isAdmin = currentUser?.role === "Admin";
 
   const [operations, setOperations] = useState<Operation[]>([]);
-  const [articles, setArticles] = useState<Article[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [submittedSearch, setSubmittedSearch] = useState("");
@@ -63,23 +60,12 @@ export default function OperationsPage() {
   );
 
   const loadReferenceData = useCallback(async () => {
-    const [articlesResult, departmentsResult] = await Promise.allSettled([
-      getArticles(),
-      getDepartments(),
-    ]);
+    const departmentsResult = await getDepartments()
 
-    console.log(articlesResult, departmentsResult)
-
-    if (articlesResult.status === "fulfilled") {
-      setArticles(articlesResult.value.items);
+    if (departmentsResult) {
+      setDepartments(departmentsResult);
     } else {
-      console.error("Failed to load articles:", articlesResult.reason);
-    }
-
-    if (departmentsResult.status === "fulfilled") {
-      setDepartments(departmentsResult.value);
-    } else {
-      console.error("Failed to load departments:", departmentsResult.reason);
+      console.error("Failed to load departments:", departmentsResult);
     }
   }, []);
 
@@ -127,7 +113,6 @@ export default function OperationsPage() {
 
   const handleSave = async (payload: {
     name: string;
-    articleId: string;
     departmentId: string;
   }) => {
     try {
@@ -150,7 +135,7 @@ export default function OperationsPage() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">Operation Registry</h1>
-          <p className="text-xs text-slate-500 mt-1">Map operations to articles and departments.</p>
+          <p className="text-xs text-slate-500 mt-1">Map operations to departments.</p>
         </div>
 
         {isAdmin && (
@@ -202,67 +187,78 @@ export default function OperationsPage() {
       )}
 
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-xs">
-        <table className="w-full text-left text-xs">
-          <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">
-            <tr>
-              <th className="px-4 py-3">Operation Name</th>
-              <th className="px-4 py-3">Article Number</th>
-              <th className="px-4 py-3">Department Name</th>
-              <th className="px-4 py-3 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 font-medium">
-            {isLoading ? (
-              <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-slate-400 font-medium">Loading operations...</td>
-              </tr>
-            ) : operations.length === 0 ? (
-              <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-slate-400 font-medium">No operations found.</td>
-              </tr>
-            ) : (
-              operations.map((operation) => (
-                <tr key={operation._id} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="px-4 py-3 font-bold text-slate-900 flex items-center gap-1.5">
-                    <Layers className="h-4 w-4 text-slate-400" />
-                    <span className="capitalize">{operation.name}</span>
-                  </td>
-                  <td className="px-4 py-3 text-slate-700 capitalize">{operation.articleNumber || "-"}</td>
-                  <td className="px-4 py-3 text-slate-700 flex items-center gap-1">
-                    <Building2 className="h-3 w-3 text-purple-500" />
-                    <span className="capitalize">{operation.departmentName || "-"}</span>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    {isAdmin && (
-                      <div className="flex items-center justify-end gap-1">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setOpToEdit(operation);
-                            setIsModalOpen(true);
-                          }}
-                          className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-blue-600"
-                          title="Edit Operation"
-                        >
-                          <Edit2 className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(operation)}
-                          className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-red-600"
-                          title="Delete Operation"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+  <table className="w-full text-left text-xs">
+    <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">
+      <tr>
+        <th className="px-4 py-3">Operation Name</th>
+        <th className="px-4 py-3">Department Name</th>
+        <th className="px-4 py-3 text-right">Actions</th>
+      </tr>
+    </thead>
+    <tbody className="divide-y divide-slate-100 font-medium">
+      {isLoading ? (
+        <tr>
+          <td colSpan={3} className="px-4 py-8 text-center text-slate-400 font-medium">
+            Loading operations...
+          </td>
+        </tr>
+      ) : operations.length === 0 ? (
+        <tr>
+          <td colSpan={3} className="px-4 py-8 text-center text-slate-400 font-medium">
+            No operations found.
+          </td>
+        </tr>
+      ) : (
+        operations.map((operation) => (
+          <tr key={operation._id} className="hover:bg-slate-50/80 transition-colors">
+            {/* Cell 1: Operation Name */}
+            <td className="px-4 py-3 font-bold text-slate-900">
+              <div className="flex items-center gap-1.5">
+                <Layers className="h-4 w-4 text-slate-400" />
+                <span className="capitalize">{operation.name}</span>
+              </div>
+            </td>
+
+            {/* Cell 2: Department Name */}
+            <td className="px-4 py-3 text-slate-700">
+              <div className="flex items-center gap-1">
+                <Building2 className="h-3 w-3 text-purple-500" />
+                <span className="capitalize">{operation.departmentName || "-"}</span>
+              </div>
+            </td>
+
+            {/* Cell 3: Actions */}
+            <td className="px-4 py-3 text-right">
+              {isAdmin && (
+                <div className="flex items-center justify-end gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpToEdit(operation);
+                      setIsModalOpen(true);
+                    }}
+                    className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-blue-600"
+                    title="Edit Operation"
+                  >
+                    <Edit2 className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(operation)}
+                    className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-red-600"
+                    title="Delete Operation"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+            </td>
+          </tr>
+        ))
+      )}
+    </tbody>
+  </table>
+</div>
 
       {/* Shared Pagination Component */}
       <Pagination
@@ -281,7 +277,6 @@ export default function OperationsPage() {
           setOpToEdit(null);
         }}
         operationToEdit={opToEdit}
-        articles={articles}
         departments={departments}
         onSubmit={handleSave}
       />
