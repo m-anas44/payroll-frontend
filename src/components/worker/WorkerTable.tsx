@@ -11,6 +11,7 @@ import {
   Clock,
 } from "lucide-react";
 import Pagination from "../common/Pagination";
+import { WORKER_STATUS_MAP } from "@/lib/constants";
 
 interface WorkerTableProps {
   workers: Worker[];
@@ -82,7 +83,7 @@ export default function WorkerTable({
                 <tbody className="divide-y divide-slate-100 font-medium">
                   {
                     workers.map((w) => (
-                      <tr key={w.id} className="transition-colors hover:bg-slate-50/80 align-top">
+                      <tr key={w._id} className="transition-colors hover:bg-slate-50/80 align-top">
                         <td className="px-3 py-3 font-bold text-slate-900">{w.name}</td>
                         <td className="px-3 py-3 text-slate-700">{w.fatherHusbandName || "-"}</td>
                         <td className="px-3 py-3 font-mono text-slate-600">{w.cnic}</td>
@@ -123,7 +124,7 @@ export default function WorkerTable({
                             </span>
                           )}
                         </td>
-                        <td className="px-3 py-3 text-slate-700">{w.status}</td>
+                        <td className="px-3 py-3 text-slate-700 capitalize">{WORKER_STATUS_MAP[w.status]}</td>
                         <td className="px-3 py-3 text-right">
                           {isAdmin ? (
                             <div className="flex items-center justify-end gap-1">
@@ -135,7 +136,7 @@ export default function WorkerTable({
                                 <Edit2 className="h-3.5 w-3.5" />
                               </button>
                               <button
-                                onClick={() => onDelete(w.id, w.name)}
+                                onClick={() => onDelete(w._id, w.name)}
                                 className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-red-600"
                                 title="Delete Worker"
                               >

@@ -28,7 +28,7 @@ const normalizeStatus = (value?: string): WorkerStatus => {
 };
 
 const normalizeWorker = (item: any): Worker => ({
-  id: item?._id || item?.id || "",
+  _id: item?._id || item?.id || "",
   name: item?.name || "Unnamed Worker",
   cnic: item?.cnic || "",
   fatherHusbandName: item?.fatherHusbandName || item?.father_husband_name || "",

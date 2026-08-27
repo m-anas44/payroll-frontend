@@ -1,12 +1,36 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Worker, PoliceVerificationStatus, WorkerGender, WorkerStatus } from "@/types/worker";
-import { addWorker, updateWorker } from "@/handlers/worker.handler";
-import { SKILLS_LIST, POLICE_VERIFICATION_STATUSES, WORKER_STATUS_OPTIONS } from "@/lib/constants";
+
+import {
+  Worker,
+  PoliceVerificationStatus,
+  WorkerGender,
+  WorkerStatus,
+} from "@/types/worker";
+
+import {
+  addWorker,
+  updateWorker,
+} from "@/handlers/worker.handler";
+
+import {
+  POLICE_VERIFICATION_STATUSES,
+  WORKER_STATUS_OPTIONS,
+} from "@/lib/constants";
+
 import { formatCNICInput } from "@/lib/validators";
-import { X, UserCheck, AlertCircle } from "lucide-react";
+
+import {
+  X,
+  UserCheck,
+  AlertCircle,
+} from "lucide-react";
+
 import { Department } from "@/types/department";
+import CustomSelect, {
+  SelectOption,
+} from "@/components/common/CustomSelect";
 
 interface WorkerModalProps {
   isOpen: boolean;
@@ -24,13 +48,14 @@ export default function WorkerModal({
   onSuccess,
 }: WorkerModalProps) {
   const [errorMessage, setErrorMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] =
+    useState(false);
 
   const [formData, setFormData] = useState<{
     name: string;
     cnic: string;
     fatherHusbandName: string;
     departmentId: string;
-    skill: string;
     doj: string;
     dob: string;
     gender: WorkerGender;
@@ -43,13 +68,13 @@ export default function WorkerModal({
     cnic: "",
     fatherHusbandName: "",
     departmentId: "",
-    skill: SKILLS_LIST[0],
     doj: new Date().toISOString().split("T")[0],
     dob: "1995-01-01",
     gender: "Male",
     contact: "",
     address: "",
-    policeVerification: "Pending" as PoliceVerificationStatus,
+    policeVerification:
+      "Pending" as PoliceVerificationStatus,
     status: "active",
   });
 
@@ -58,63 +83,143 @@ export default function WorkerModal({
 
     if (workerToEdit) {
       setFormData({
-        name: workerToEdit.name,
-        cnic: workerToEdit.cnic,
-        fatherHusbandName: workerToEdit.fatherHusbandName || "",
-        departmentId: workerToEdit.departmentId,
-        skill: workerToEdit.skill || SKILLS_LIST[0],
-        doj: workerToEdit.doj,
-        dob: workerToEdit.dob,
+        name: workerToEdit.name || "",
+        cnic: workerToEdit.cnic || "",
+        fatherHusbandName:
+          workerToEdit.fatherHusbandName || "",
+        departmentId:
+          workerToEdit.departmentId || "",
+        doj:
+          workerToEdit.doj ||
+          new Date().toISOString().split("T")[0],
+        dob: workerToEdit.dob || "1995-01-01",
         gender: workerToEdit.gender || "Male",
-        contact: workerToEdit.contact,
-        address: workerToEdit.address,
-        policeVerification: workerToEdit.policeVerification,
-        status: workerToEdit.status,
+        contact: workerToEdit.contact || "",
+        address: workerToEdit.address || "",
+        policeVerification:
+          workerToEdit.policeVerification ||
+          ("Pending" as PoliceVerificationStatus),
+        status:
+          workerToEdit.status ||
+          ("active" as WorkerStatus),
       });
     } else {
       setFormData({
         name: "",
         cnic: "",
         fatherHusbandName: "",
-        departmentId: departments[0]?.id || "",
-        skill: SKILLS_LIST[0],
-        doj: new Date().toISOString().split("T")[0],
+        departmentId:
+          departments[0]?._id || "",
+        doj: new Date()
+          .toISOString()
+          .split("T")[0],
         dob: "1995-01-01",
         gender: "Male",
         contact: "",
         address: "",
-        policeVerification: "Pending" as PoliceVerificationStatus,
+        policeVerification:
+          "Pending" as PoliceVerificationStatus,
         status: "active",
       });
     }
+
     setErrorMessage("");
-  }, [departments, isOpen, workerToEdit]);
+  }, [
+    departments,
+    isOpen,
+    workerToEdit,
+  ]);
 
-  if (!isOpen) return null;
+  if (!isOpen) {
+    return null;
+  }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const departmentOptions: SelectOption[] =
+    departments.map((department) => ({
+      label: department.name,
+      value: department._id,
+      sublabel: department.code,
+    }));
+
+  const genderOptions: SelectOption[] = [
+    {
+      label: "Male",
+      value: "Male",
+    },
+    {
+      label: "Female",
+      value: "Female",
+    },
+    {
+      label: "Other",
+      value: "Other",
+    },
+  ];
+
+  const statusOptions: SelectOption[] =
+    WORKER_STATUS_OPTIONS.map((option: any) => ({
+      label: option.label,
+      value: option.value,
+    }));
+
+  const policeVerificationOptions: SelectOption[] =
+    POLICE_VERIFICATION_STATUSES.map(
+      (status) => ({
+        label: status,
+        value: status,
+      })
+    );
+
+  const handleSubmit = async (
+    event: React.FormEvent
+  ) => {
+    event.preventDefault();
+
     setErrorMessage("");
 
-    const selectedDept = departments.find((d) => d.id === formData.departmentId);
+    if (!formData.departmentId) {
+      setErrorMessage(
+        "Please select a department."
+      );
+      return;
+    }
+
+    const selectedDept = departments.find(
+      (department) =>
+        String(department._id) ===
+        String(formData.departmentId)
+    );
+
+    setIsSubmitting(true);
 
     try {
+      const payload = {
+        ...formData,
+        departmentName:
+          selectedDept?.name || "",
+      };
+
       if (workerToEdit) {
-        await updateWorker(workerToEdit.id, {
-          ...formData,
-          departmentName: selectedDept?.name || "",
-        });
+        await updateWorker(
+          workerToEdit._id,
+          payload
+        );
       } else {
-        await addWorker({
-          ...formData,
-          departmentName: selectedDept?.name || "",
-        });
+        await addWorker(payload);
       }
 
-      if (onSuccess) onSuccess();
+      await onSuccess?.();
+
       onClose();
     } catch (error: any) {
-      setErrorMessage(error.message || "Unable to save worker.");
+      setErrorMessage(
+        error?.response?.data?.detail ||
+          error?.response?.data?.error ||
+          error?.message ||
+          "Unable to save worker."
+      );
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -124,11 +229,17 @@ export default function WorkerModal({
         <div className="flex items-center justify-between border-b border-slate-100 pb-4">
           <h3 className="flex items-center gap-2 text-base font-bold text-slate-900">
             <UserCheck className="h-5 w-5 text-blue-600" />
-            {workerToEdit ? "Edit Worker Profile" : "Register New Worker"}
+
+            {workerToEdit
+              ? "Edit Worker Profile"
+              : "Register New Worker"}
           </h3>
+
           <button
+            type="button"
             onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            disabled={isSubmitting}
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-50"
           >
             <X className="h-5 w-5" />
           </button>
@@ -137,198 +248,275 @@ export default function WorkerModal({
         {errorMessage && (
           <div className="mt-4 flex items-center gap-2 rounded-lg bg-red-50 p-3 text-xs font-semibold text-red-700">
             <AlertCircle className="h-4 w-4 shrink-0" />
+
             <span>{errorMessage}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+        <form
+          onSubmit={handleSubmit}
+          className="mt-4 space-y-4"
+        >
+          {/* Name */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs font-bold text-slate-700">Full Name *</label>
+              <label className="mb-1 block text-xs font-bold text-slate-700">
+                Full Name *
+              </label>
+
               <input
                 type="text"
                 required
+                disabled={isSubmitting}
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="e.g. Muhammad Usman"
-                className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:bg-white focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="mb-1 block text-xs font-bold text-slate-700">Father / Husband Name</label>
-              <input
-                type="text"
-                value={formData.fatherHusbandName}
-                onChange={(e) => setFormData({ ...formData, fatherHusbandName: e.target.value })}
-                placeholder="e.g. Abdul Rehman"
-                className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:bg-white focus:outline-none"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label className="mb-1 block text-xs font-bold text-slate-700">CNIC (Unique) *</label>
-              <input
-                type="text"
-                required
-                value={formData.cnic}
-                onChange={(e) => setFormData({ ...formData, cnic: formatCNICInput(e.target.value) })}
-                placeholder="35202-1234567-1"
-                maxLength={15}
-                className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:bg-white focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="mb-1 block text-xs font-bold text-slate-700">Gender</label>
-              <select
-                value={formData.gender}
-                onChange={(e) => setFormData({ ...formData, gender: e.target.value as WorkerGender })}
-                className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:bg-white focus:outline-none"
-              >
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label className="mb-1 block text-xs font-bold text-slate-700">Department *</label>
-              <select
-                value={formData.departmentId}
-                onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })}
-                className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:bg-white focus:outline-none"
-              >
-                {departments.length === 0 ? (
-                  <option value="">No departments loaded</option>
-                ) : (
-                  departments.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.name}
-                    </option>
-                  ))
-                )}
-              </select>
-            </div>
-
-            <div>
-              <label className="mb-1 block text-xs font-bold text-slate-700">Primary Skill</label>
-              <select
-                value={formData.skill}
-                onChange={(e) => setFormData({ ...formData, skill: e.target.value })}
-                className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:bg-white focus:outline-none"
-              >
-                {SKILLS_LIST.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label className="mb-1 block text-xs font-bold text-slate-700">Date of Joining (DOJ)</label>
-              <input
-                type="date"
-                value={formData.doj}
-                onChange={(e) => setFormData({ ...formData, doj: e.target.value })}
-                className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:bg-white focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="mb-1 block text-xs font-bold text-slate-700">Date of Birth (DOB)</label>
-              <input
-                type="date"
-                value={formData.dob}
-                onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
-                className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:bg-white focus:outline-none"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label className="mb-1 block text-xs font-bold text-slate-700">Contact Number</label>
-              <input
-                type="text"
-                value={formData.contact}
-                onChange={(e) => setFormData({ ...formData, contact: e.target.value })}
-                placeholder="0300-1234567"
-                className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:bg-white focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="mb-1 block text-xs font-bold text-slate-700">Status</label>
-              <select
-                value={formData.status}
-                onChange={(e) =>
-                  setFormData({ ...formData, status: e.target.value as WorkerStatus })
-                }
-                className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:bg-white focus:outline-none"
-              >
-                {WORKER_STATUS_OPTIONS.map((opt: any) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label className="mb-1 block text-xs font-bold text-slate-700">Police Verification Status</label>
-              <select
-                value={formData.policeVerification}
-                onChange={(e) =>
+                onChange={(event) =>
                   setFormData({
                     ...formData,
-                    policeVerification: e.target.value as PoliceVerificationStatus,
+                    name: event.target.value,
                   })
                 }
-                className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:bg-white focus:outline-none"
-              >
-                {POLICE_VERIFICATION_STATUSES.map((st) => (
-                  <option key={st} value={st}>
-                    {st}
-                  </option>
-                ))}
-              </select>
+                placeholder="e.g. Muhammad Usman"
+                className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:bg-white focus:outline-none disabled:opacity-60"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-bold text-slate-700">
+                Father / Husband Name
+              </label>
+
+              <input
+                type="text"
+                disabled={isSubmitting}
+                value={
+                  formData.fatherHusbandName
+                }
+                onChange={(event) =>
+                  setFormData({
+                    ...formData,
+                    fatherHusbandName:
+                      event.target.value,
+                  })
+                }
+                placeholder="e.g. Abdul Rehman"
+                className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:bg-white focus:outline-none disabled:opacity-60"
+              />
             </div>
           </div>
 
-          <div>
-            <label className="mb-1 block text-xs font-bold text-slate-700">Residential Address</label>
-            <textarea
-              rows={3}
-              value={formData.address}
-              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-              placeholder="Full home address..."
-              className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:bg-white focus:outline-none"
+          {/* CNIC and Gender */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-bold text-slate-700">
+                CNIC (Unique) *
+              </label>
+
+              <input
+                type="text"
+                required
+                disabled={isSubmitting}
+                value={formData.cnic}
+                onChange={(event) =>
+                  setFormData({
+                    ...formData,
+                    cnic: formatCNICInput(
+                      event.target.value
+                    ),
+                  })
+                }
+                placeholder="35202-1234567-1"
+                maxLength={15}
+                className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:bg-white focus:outline-none disabled:opacity-60"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-bold text-slate-700">
+                Contact Number
+              </label>
+
+              <input
+                type="text"
+                disabled={isSubmitting}
+                value={formData.contact}
+                onChange={(event) =>
+                  setFormData({
+                    ...formData,
+                    contact: event.target.value,
+                  })
+                }
+                placeholder="0300-1234567"
+                className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:bg-white focus:outline-none disabled:opacity-60"
+              />
+            </div>
+          </div>
+
+          {/* Department */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <CustomSelect
+              label="Department"
+              required
+              options={departmentOptions}
+              value={formData.departmentId}
+              disabled={
+                isSubmitting ||
+                departments.length === 0
+              }
+              placeholder={
+                departments.length === 0
+                  ? "No departments loaded"
+                  : "Select department"
+              }
+              searchPlaceholder="Search department..."
+              error={
+                !formData.departmentId &&
+                errorMessage
+                  ? "Department is required"
+                  : undefined
+              }
+              onChange={(value) =>
+                setFormData({
+                  ...formData,
+                  departmentId: String(value),
+                })
+              }
+            />
+            <CustomSelect
+              label="Gender"
+              options={genderOptions}
+              value={formData.gender}
+              disabled={isSubmitting}
+              placeholder="Select gender"
+              searchPlaceholder="Search gender..."
+              onChange={(value) =>
+                setFormData({
+                  ...formData,
+                  gender: value as WorkerGender,
+                })
+              }
             />
           </div>
 
+          {/* Dates */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-bold text-slate-700">
+                Date of Joining (DOJ)
+              </label>
+
+              <input
+                type="date"
+                disabled={isSubmitting}
+                value={formData.doj}
+                onChange={(event) =>
+                  setFormData({
+                    ...formData,
+                    doj: event.target.value,
+                  })
+                }
+                className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:bg-white focus:outline-none disabled:opacity-60"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-bold text-slate-700">
+                Date of Birth (DOB)
+              </label>
+
+              <input
+                type="date"
+                disabled={isSubmitting}
+                value={formData.dob}
+                onChange={(event) =>
+                  setFormData({
+                    ...formData,
+                    dob: event.target.value,
+                  })
+                }
+                className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:bg-white focus:outline-none disabled:opacity-60"
+              />
+            </div>
+          </div>
+
+          {/* Police Verification */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <CustomSelect
+            label="Police Verification Status"
+            options={
+              policeVerificationOptions
+            }
+            value={
+              formData.policeVerification
+            }
+            disabled={isSubmitting}
+            placeholder="Select verification status"
+            searchPlaceholder="Search status..."
+            onChange={(value) =>
+              setFormData({
+                ...formData,
+                policeVerification:
+                  value as PoliceVerificationStatus,
+              })
+            }
+          />
+          <CustomSelect
+              label="Status"
+              options={statusOptions}
+              value={formData.status}
+              disabled={isSubmitting}
+              placeholder="Select status"
+              searchPlaceholder="Search status..."
+              onChange={(value) =>
+                setFormData({
+                  ...formData,
+                  status: value as WorkerStatus,
+                })
+              }
+            />
+          </div>
+
+          {/* Address */}
+          <div>
+            <label className="mb-1 block text-xs font-bold text-slate-700">
+              Residential Address
+            </label>
+
+            <textarea
+              rows={3}
+              disabled={isSubmitting}
+              value={formData.address}
+              onChange={(event) =>
+                setFormData({
+                  ...formData,
+                  address: event.target.value,
+                })
+              }
+              placeholder="Full home address..."
+              className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:bg-white focus:outline-none disabled:opacity-60"
+            />
+          </div>
+
+          {/* Actions */}
           <div className="flex items-center justify-end gap-3 border-t border-slate-100 pt-3">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100"
+              disabled={isSubmitting}
+              className="rounded-lg px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 disabled:opacity-50"
             >
               Cancel
             </button>
+
             <button
               type="submit"
-              className="rounded-lg bg-blue-600 px-5 py-2 text-xs font-bold text-white shadow-xs transition-colors hover:bg-blue-700"
+              disabled={isSubmitting}
+              className="rounded-lg bg-blue-600 px-5 py-2 text-xs font-bold text-white shadow-xs transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {workerToEdit ? "Save Profile Changes" : "Add Worker"}
+              {isSubmitting
+                ? "Saving..."
+                : workerToEdit
+                  ? "Save Profile Changes"
+                  : "Add Worker"}
             </button>
           </div>
         </form>

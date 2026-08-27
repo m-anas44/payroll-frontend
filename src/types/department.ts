@@ -2,8 +2,8 @@ export interface Department {
   _id: string;
   code: string;
   name: string;
-  description: string;
-  status: "Active" | "Inactive";
+  description?: string;
+  status?: "Active" | "Inactive";
   workerCount?: number;
-  createdAt: string;
+  createdAt?: string;
 }

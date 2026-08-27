@@ -3,7 +3,7 @@ export type WorkerGender = "Male" | "Female" | "Other";
 export type WorkerStatus = "active" | "inactive" | "on_leave" | "terminated";
 
 export interface Worker {
-  id: string;
+  _id: string;
   name: string;
   cnic: string;
   fatherHusbandName: string;

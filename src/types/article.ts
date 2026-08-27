@@ -4,6 +4,6 @@ export interface Article {
   name: string;
   description?: string;
   status: "Active" | "Inactive";
-  createdAt: string;
+  createdAt?: string;
   updatedAt?: string;
 }

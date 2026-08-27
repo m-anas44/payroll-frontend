@@ -14,6 +14,8 @@ export interface ProductionQueryParams {
 }
 
 export interface ProductionUpdatePayload {
+  articleId?: string;
+  operationId?: string;
   quantity?: number;
   productionDate?: string;
   notes?: string;
@@ -68,7 +70,7 @@ export async function createProductionBatch(
   payload: ProductionBatchPayload
 ) {
   const response = await axios.post(
-    "/api/admin/production/batch",
+    "/api/admin/production",
     payload
   );
 
