@@ -12,8 +12,9 @@ function getAuthHeaders(request: NextRequest) {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   const headers = getAuthHeaders(request);
 
   if (!headers) {
@@ -21,7 +22,7 @@ export async function GET(
   }
 
   try {
-    const response = await apiClient.get(`/admin/production/${params.id}`, {
+    const response = await apiClient.get(`/admin/production/${id}`, {
       headers,
     });
     return NextResponse.json(response.data, { status: 200 });
@@ -38,8 +39,9 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   const headers = getAuthHeaders(request);
 
   if (!headers) {
@@ -48,7 +50,7 @@ export async function PUT(
 
   try {
     const body = await request.json();
-    const response = await apiClient.put(`/admin/production/${params.id}`, body, {
+    const response = await apiClient.put(`/admin/production/${id}`, body, {
       headers,
     });
 
@@ -66,8 +68,9 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   const headers = getAuthHeaders(request);
 
   if (!headers) {
@@ -75,7 +78,7 @@ export async function DELETE(
   }
 
   try {
-    const response = await apiClient.delete(`/admin/production/${params.id}`, {
+    const response = await apiClient.delete(`/admin/production/${id}`, {
       headers,
     });
 

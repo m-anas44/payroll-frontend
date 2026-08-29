@@ -17,6 +17,16 @@ import { Department } from "@/types/department";
 import { Article } from "@/types/article";
 import { Operation } from "@/types/operation";
 
+const INITIAL_FILTERS = {
+  searchQuery: "",
+  startDate: new Date().toISOString().split("T")[0],
+  endDate: new Date().toISOString().split("T")[0],
+  departmentId: "",
+  workerId: "",
+  articleId: "",
+  operationId: "",
+};
+
 export default function ProductionPage() {
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
   
@@ -30,27 +40,19 @@ export default function ProductionPage() {
   const [isLoadingLookup, setIsLoadingLookup] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [filters, setFilters] = useState({
-    startDate: new Date().toISOString().split("T")[0],
-    endDate: new Date().toISOString().split("T")[0],
-    departmentId: "",
-    workerId: "",
-    articleId: "",
-    operationId: "",
-  });
+  const [filters, setFilters] = useState(INITIAL_FILTERS);
 
   const fetchLookupData = async () => {
     setIsLoadingLookup(true);
     try {
       const [workersRes, departmentsRes, articlesRes, operationsRes] =
         await Promise.all([
-          getWorkers(),
+          getWorkers({ status: "active" }),
           getDepartments(),
           getArticles(),
           getOperations(),
         ]);
 
-      // FIX: Safely handle both array responses and paginated { items: [] } responses
       const safeWorkers = workersRes.items || workersRes || [];
       const safeDepartments = departmentsRes || departmentsRes || [];
       const safeArticles = articlesRes.items || articlesRes || [];
@@ -58,18 +60,15 @@ export default function ProductionPage() {
 
       setWorkers(
         safeWorkers.map((worker: any) => ({
-          _id: String(worker._id || worker.id),
-          id: worker.id,
+          _id: String(worker._id),
           name: worker.name,
-          workerCode: worker.workerCode,
           departmentId: worker.departmentId ? String(worker.departmentId) : undefined,
         }))
       );
       
       setDepartments(
         safeDepartments.map((dept: any) => ({
-          _id: String(dept._id || dept.id),
-          id: dept.id,
+          _id: String(dept._id),
           name: dept.name,
           code: dept.code,
         }))
@@ -86,10 +85,8 @@ export default function ProductionPage() {
       
       setOperations(
         safeOperations.map((operation: any) => ({
-          _id: String(operation._id || operation.id),
-          id: operation.id,
-          code: operation.code || operation.operationCode,
-          operationCode: operation.operationCode,
+          _id: String(operation._id),
+          code: operation.code,
           name: operation.name,
         }))
       );
@@ -106,13 +103,12 @@ export default function ProductionPage() {
     setError(null);
     try {
       const activeFilters = Object.fromEntries(
-        Object.entries(filters).filter(([_, value]) => value !== "")
+        Object.entries(filters).filter(([_, value]) => value !== "" && value !== "ALL")
       );
+
       const response = await getProductionEntries(activeFilters);
-      
       const rawEntries = response.items || response || [];
 
-      // FIX: Map the backend data to strictly match your frontend ProductionEntry type requirements
       const mappedEntries: ProductionEntry[] = rawEntries.map((entry: any) => ({
         ...entry,
         id: entry._id || entry.id || "temp-id",
@@ -143,9 +139,12 @@ export default function ProductionPage() {
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
+  const handleResetFilters = () => {
+    setFilters(INITIAL_FILTERS);
+  };
+
   return (
-    <div className="space-y-6 p-6">
-      {/* FIX: Inline Page Header instead of missing component */}
+    <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Production Entry</h1>
@@ -163,6 +162,7 @@ export default function ProductionPage() {
       <ProductionFilter 
         filters={filters} 
         onFilterChange={handleFilterChange}
+        onResetFilters={handleResetFilters}
         workers={workers}
         departments={departments}
         articles={articles}

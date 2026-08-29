@@ -21,6 +21,19 @@ interface EditProductionModalProps {
   operations: Operation[];
 }
 
+// Safely formats ISO string (e.g., "2026-08-29T00:00:00") into "2026-08-29" for HTML input
+const formatDateForInput = (dateString?: string): string => {
+  if (!dateString) return new Date().toISOString().split("T")[0];
+  return dateString.split("T")[0];
+};
+
+// Helper to extract ID string whether field is an object or string
+const extractId = (value: any): string => {
+  if (!value) return "";
+  if (typeof value === "object") return String(value._id || value.id || "");
+  return String(value);
+};
+
 export default function EditProductionModal({
   isOpen,
   onClose,
@@ -42,28 +55,39 @@ export default function EditProductionModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
+  // Sync state whenever the modal opens or a new entry is provided
   useEffect(() => {
-    if (!entry || !isOpen) return;
+    if (!isOpen || !entry) return;
 
-    setProductionDate(entry.productionDate || entry.date || new Date().toISOString().split("T")[0]);
-    setWorkerId(String(entry.workerId || ""));
-    setDepartmentId(String(entry.departmentId || ""));
-    setArticleId(String(entry.articleId || ""));
-    setOperationId(String(entry.operationId || ""));
+    setProductionDate(formatDateForInput(entry.productionDate || undefined));
+    setWorkerId(extractId(entry.workerId || null));
+    setDepartmentId(extractId(entry.departmentId || null));
+    setArticleId(extractId(entry.articleId || null));
+    setOperationId(extractId(entry.operationId || null));
     setQuantity(Number(entry.quantity) || "");
-    setNotes(entry.remarks || "");
+    setNotes(entry.notes || "");
 
     setErrorMessage("");
-  }, [entry, isOpen]);
+  }, [isOpen, entry]);
 
-  const workerOptions: SelectOption[] = useMemo(() => workers.map((worker) => ({ value: worker._id, label: worker.name })), [workers]);
-  const departmentOptions: SelectOption[] = useMemo(() => departments.map((dept) => ({ value: dept._id, label: dept.name, sublabel: dept.code })), [departments]);
-  const articleOptions: SelectOption[] = useMemo(() => articles.map((article) => ({ value: article._id, label: article.name, sublabel: article.articleNumber })), [articles]);
-  
-  // Independent operations list
-  const operationOptions: SelectOption[] = useMemo(() => operations.map((operation) => ({ value: operation._id, label: operation.name, sublabel: operation.code })), [operations]);
+  const workerOptions: SelectOption[] = useMemo(
+    () => workers.map((worker) => ({ value: worker._id, label: worker.name })),
+    [workers]
+  );
+  const departmentOptions: SelectOption[] = useMemo(
+    () => departments.map((dept) => ({ value: dept._id, label: dept.name, sublabel: dept.code })),
+    [departments]
+  );
+  const articleOptions: SelectOption[] = useMemo(
+    () => articles.map((article) => ({ value: article._id, label: article.name, sublabel: article.articleNumber })),
+    [articles]
+  );
+  const operationOptions: SelectOption[] = useMemo(
+    () => operations.map((operation) => ({ value: operation._id, label: operation.name, sublabel: operation.code })),
+    [operations]
+  );
 
-  const handleSubmit = async (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.SubmitEvent) => {
     event.preventDefault();
     setErrorMessage("");
 
@@ -81,13 +105,12 @@ export default function EditProductionModal({
     setIsSubmitting(true);
 
     try {
-      // NOTE: Make sure your Backend's ProductionUpdateRequest supports articleId and operationId!
       await updateProductionEntry(productionId, {
         productionDate,
         quantity: Number(quantity),
         notes: notes || undefined,
-        articleId, 
-        operationId 
+        articleId,
+        operationId,
       });
 
       await onSuccess?.();
@@ -95,9 +118,9 @@ export default function EditProductionModal({
     } catch (error: any) {
       setErrorMessage(
         error?.response?.data?.error ||
-        error?.response?.data?.detail ||
-        error?.message ||
-        "Failed to update production record."
+          error?.response?.data?.detail ||
+          error?.message ||
+          "Failed to update production record."
       );
     } finally {
       setIsSubmitting(false);
@@ -142,15 +165,14 @@ export default function EditProductionModal({
               </div>
             </div>
 
-            {/* Locked Worker & Department */}
             <CustomSelect
               label="Worker (Locked)"
               required
               options={workerOptions}
               value={workerId}
-              onChange={() => {}} // Disabled
+              onChange={() => {}}
               placeholder="Select worker"
-              disabled={true} 
+              disabled={true}
             />
 
             <CustomSelect
@@ -158,12 +180,11 @@ export default function EditProductionModal({
               required
               options={departmentOptions}
               value={departmentId}
-              onChange={() => {}} // Disabled
+              onChange={() => {}}
               placeholder="Select department"
-              disabled={true} 
+              disabled={true}
             />
 
-            {/* Editable Article & Operation */}
             <CustomSelect
               label="Article"
               required

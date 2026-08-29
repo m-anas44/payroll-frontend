@@ -7,19 +7,15 @@ export interface ProductionEntry {
   date: string; // YYYY-MM-DD
   workerId: string;
   workerName?: string;
-  workerCode?: string;
   departmentId: string;
   departmentName?: string;
   articleId: string;
-  articleName?: string;
-  articleCode?: string;
+  articleNumber?: string;
   operationId: string;
   operationName?: string;
-  operationCode?: string;
   quantity: number;
-  rateApplied: number; // Rate at time of production
   totalPayment: number; // quantity * rateApplied
-  remarks?: string;
+  notes?: string;
   createdBy: string;
   createdAt: string;
 }

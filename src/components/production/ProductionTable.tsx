@@ -27,7 +27,7 @@ export default function ProductionTable({
   onRefresh,
 }: ProductionTableProps) {
   const [editingEntry, setEditingEntry] = useState<ProductionEntry | null>(null);
-
+console.log("entires i am getting: ", entries)
   if (!entries || entries.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 py-16">
@@ -78,20 +78,20 @@ export default function ProductionTable({
                   </td>
                   <td className="px-4 py-3">
                     <div className="font-semibold text-slate-900">
-                      {entry.workerName || entry.workerId || "Unknown Worker"}
+                      {entry.workerName || "Unknown Worker"}
                     </div>
                   </td>
                   <td className="px-4 py-3 text-xs text-slate-600">
-                    {entry.articleName || entry.articleId || "-"}
+                    {entry.articleNumber || "-"}
                   </td>
                   <td className="px-4 py-3 text-xs text-slate-600">
-                    {entry.operationName || entry.operationId || "-"}
+                    {entry.operationName || "-"}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-right font-semibold text-slate-900">
                     {entry.quantity}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-right text-xs text-slate-600">
-                    Rs {Number(entry.rateApplied).toFixed(2)}
+                    Rs {Number(entry.appliedRate).toFixed(2)}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-right font-bold text-emerald-600">
                     Rs {Number(entry.totalAmount).toFixed(2)}
