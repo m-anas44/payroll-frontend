@@ -20,24 +20,51 @@ export interface ProductionUpdatePayload {
   productionDate?: string;
   notes?: string;
   status?: string;
+  workers?: ProductionWorkerInputPayload[];
+  isGroupTask?: boolean;
+  totalGroupQuantity?: number;
+  splitMode?: "equal" | "custom";
 }
+
 
 export interface ProductionStatusUpdatePayload {
   status: string;
   entryIds: string[];
 }
 
+export interface ProductionWorkerInputPayload {
+  workerId: string;
+  quantity?: number;
+  effectiveRate?: number;
+  earnedAmount?: number;
+}
+
+export interface ProductionWorkerEntry {
+  workerId: string;
+  workerName?: string;
+  quantity: number;
+  effectiveRate: number;
+  earnedAmount: number;
+}
+
 export interface ProductionEntry {
   _id: string;
-  workerId: string;
+  workerId?: string;
+  workerName?: string;
   departmentId: string;
+  departmentName?: string;
   articleId: string;
+  articleNumber?: string;
   operationId: string;
+  operationName?: string;
   productionDate: string;
   quantity: number;
   rateId: string;
-  appliedRate: number;
+  appliedRate?: number;
   totalAmount: number;
+  workers?: ProductionWorkerEntry[];
+  isGroupTask?: boolean;
+  totalGroupQuantity?: number;
   status: string;
   enteredBy: string;
   notes?: string | null;
@@ -53,11 +80,15 @@ export interface ProductionListResponse {
 }
 
 export interface ProductionBatchItemPayload {
-  workerId: string;
+  workerId?: string;
+  workers?: ProductionWorkerInputPayload[];
   departmentId: string;
   articleId: string;
   operationId: string;
-  quantity: number;
+  quantity?: number;
+  isGroupTask?: boolean;
+  totalGroupQuantity?: number;
+  splitMode?: "equal" | "custom";
   notes?: string;
 }
 
@@ -65,6 +96,7 @@ export interface ProductionBatchPayload {
   productionDate: string;
   items: ProductionBatchItemPayload[];
 }
+
 
 export async function createProductionBatch(
   payload: ProductionBatchPayload

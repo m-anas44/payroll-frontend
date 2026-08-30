@@ -1,20 +1,77 @@
 "use client";
 
-import React, { useState } from "react";
-import { usePayrollStore } from "@/store/payroll.store";
+import React, { useState, useEffect, useCallback } from "react";
 import { getCurrentMonthStr, formatMonthYear } from "@/lib/format-date";
 import PayrollSummary from "@/components/payroll/PayrollSummary";
 import PayrollTable from "@/components/payroll/PayrollTable";
-import GeneratePayrollModal from "@/components/payroll/GeneratePayrollModal";
 import ExportButton from "@/components/excel/ExportButton";
-import { Calculator, Calendar, FileText } from "lucide-react";
+import { getPayrollByMonth } from "@/handlers/payroll.handler";
+import { Calculator, Calendar, Loader2, AlertCircle, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 
 export default function PayrollPage() {
-  const { monthlyRecords } = usePayrollStore();
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthStr());
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [activeRecord, setActiveRecord] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isReconciling, setIsReconciling] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const activeRecord = monthlyRecords.find((p) => p.month === selectedMonth);
+  const fetchPayrollData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await getPayrollByMonth(selectedMonth);
+      // Map API fields to UI component expectations if needed
+      const mappedRecord = {
+        id: data._id,
+        month: data.monthString || selectedMonth,
+        status: data.status,
+        totalWorkers: data.totalWorkers,
+        totalQuantity: data.totalProductionQuantity || 0,
+        totalGrossEarnings: data.totalGrossAmount || data.totalProduction || 0,
+        totalNetPayable: data.totalNetAmount || 0,
+        items: (data.items || []).map((item: any) => ({
+          workerId: item.workerId,
+          workerCode: item.workerCode || item.cnic || "W-000",
+          workerName: item.workerName || "Worker",
+          cnic: item.cnic || "-",
+          departmentName: item.departmentName || "-",
+          totalQuantity: item.productionQuantity || 0,
+          grossEarnings: item.grossAmount || item.productionAmount || 0,
+          productionAmount: item.productionAmount || 0,
+          allowanceAmount: item.allowanceAmount || 0,
+          advanceAmount: item.advanceAmount || 0,
+          eobiAmount: item.eobiAmount || 0,
+          otherDeductions: item.otherDeductions || 0,
+          deductions: item.deductionAmount || 0,
+          netPayable: item.netAmount || 0,
+        })),
+      };
+      setActiveRecord(mappedRecord);
+    } catch (err: any) {
+      console.error("Failed to load payroll data:", err);
+      setError("Failed to load payroll records for " + formatMonthYear(selectedMonth));
+      setActiveRecord(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [selectedMonth]);
+
+  useEffect(() => {
+    fetchPayrollData();
+  }, [fetchPayrollData]);
+
+  const handleRefresh = async () => {
+    setIsReconciling(true);
+    try {
+      await fetchPayrollData();
+      toast.success("Payroll reconciled successfully!");
+    } catch (err) {
+      toast.error("Failed to reconcile payroll.");
+    } finally {
+      setIsReconciling(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -24,7 +81,7 @@ export default function PayrollPage() {
             Monthly Piece-Rate Payroll Engine
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            Aggregate piece-rate production logs, apply bonuses/deductions, and process monthly wage disbursement statements.
+            Aggregate piece-rate production logs, apply allowances/deductions, and process monthly wage disbursement statements.
           </p>
         </div>
 
@@ -32,11 +89,12 @@ export default function PayrollPage() {
           <ExportButton type="payroll" month={selectedMonth} label="Export Payroll CSV" />
 
           <button
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-1.5 rounded-lg bg-purple-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-purple-700 shadow-xs transition-colors"
+            onClick={handleRefresh}
+            disabled={isReconciling}
+            className="flex items-center gap-1.5 rounded-lg bg-purple-600 px-4 py-2 text-xs font-bold text-white hover:bg-purple-700 shadow-xs transition-colors disabled:opacity-50"
           >
-            <Calculator className="h-3.5 w-3.5" />
-            <span>Run Monthly Payroll</span>
+            {isReconciling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+            <span>Reconcile Payroll</span>
           </button>
         </div>
       </div>
@@ -54,42 +112,36 @@ export default function PayrollPage() {
             className="text-xs font-bold border border-slate-300 rounded-lg px-2.5 py-1.5 bg-slate-50 text-slate-900 focus:outline-none"
           />
         </div>
-
-        <div className="text-xs text-slate-500 ml-auto flex items-center gap-2">
-          <FileText className="h-4 w-4 text-slate-400" />
-          <span>
-            {monthlyRecords.length} Historical Payroll Runs Available
-          </span>
-        </div>
       </div>
 
-      {activeRecord ? (
+      {error && (
+        <div className="flex items-center gap-2 rounded-lg bg-red-50 p-4 text-sm font-semibold text-red-700 border border-red-100">
+          <AlertCircle className="h-5 w-5 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      {isLoading ? (
+        <div className="flex h-64 items-center justify-center rounded-xl border border-slate-200 bg-white">
+          <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
+        </div>
+      ) : activeRecord ? (
         <div className="space-y-6">
           <PayrollSummary record={activeRecord} />
-          <PayrollTable record={activeRecord} />
+          <PayrollTable record={activeRecord} onRefresh={fetchPayrollData} />
         </div>
       ) : (
         <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center">
           <Calculator className="mx-auto h-12 w-12 text-slate-300 mb-3" />
           <h3 className="text-base font-bold text-slate-800">
-            No Payroll Record for {formatMonthYear(selectedMonth)}
+            No Production Records for {formatMonthYear(selectedMonth)}
           </h3>
           <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1 mb-4">
-            Click &quot;Run Monthly Payroll&quot; to aggregate daily production logs and calculate worker net payables for this month.
+            Daily piece-rate production logs will automatically generate worker payroll summaries here once logged.
           </p>
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="rounded-lg bg-purple-600 px-5 py-2 text-xs font-bold text-white hover:bg-purple-700 shadow-xs transition-colors"
-          >
-            Calculate Payroll for {formatMonthYear(selectedMonth)}
-          </button>
         </div>
       )}
-
-      <GeneratePayrollModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-      />
     </div>
   );
 }
+

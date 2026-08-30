@@ -1,11 +1,17 @@
+export interface ProductionWorkerEntry {
+  workerId: string;
+  workerName?: string;
+  quantity: number;
+  effectiveRate: number;
+  earnedAmount: number;
+}
+
 export interface ProductionEntry {
-  totalAmount(totalAmount: any): unknown;
   _id: string;
   productionDate: string;
-  appliedRate: number;
-  id: string;
-  date: string; // YYYY-MM-DD
-  workerId: string;
+  appliedRate?: number;
+  date?: string; // YYYY-MM-DD
+  workerId?: string;
   workerName?: string;
   departmentId: string;
   departmentName?: string;
@@ -14,10 +20,17 @@ export interface ProductionEntry {
   operationId: string;
   operationName?: string;
   quantity: number;
-  totalPayment: number; // quantity * rateApplied
-  notes?: string;
-  createdBy: string;
-  createdAt: string;
+  totalAmount?: number;
+  totalPayment?: number;
+  workers?: ProductionWorkerEntry[];
+  isGroupTask?: boolean;
+  totalGroupQuantity?: number;
+  notes?: string | null;
+  createdBy?: string;
+  enteredBy?: string;
+  status?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface ProductionFilterState {
@@ -32,3 +45,4 @@ export interface ProductionFilterState {
   operationId?: string;
   searchQuery?: string;
 }
+

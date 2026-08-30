@@ -4,6 +4,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import ProductionFilter from "@/components/production/ProductionFilter";
 import ProductionTable from "@/components/production/ProductionTable";
 import BatchProductionModal from "@/components/production/BatchProductionModal";
+import Pagination from "@/components/common/Pagination";
 import { Layers, Loader2, AlertCircle } from "lucide-react";
 import { getProductionEntries } from "@/handlers/production.handler";
 import { getWorkers } from "@/handlers/worker.handler";
@@ -19,18 +20,21 @@ import { Operation } from "@/types/operation";
 
 const INITIAL_FILTERS = {
   searchQuery: "",
-  startDate: new Date().toISOString().split("T")[0],
-  endDate: new Date().toISOString().split("T")[0],
+  startDate: "",
+  endDate: "",
   departmentId: "",
   workerId: "",
   articleId: "",
   operationId: "",
+  page: 1,
+  limit: 20,
 };
 
 export default function ProductionPage() {
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
-  
+
   const [entries, setEntries] = useState<ProductionEntry[]>([]);
+  const [total, setTotal] = useState(0);
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [articles, setArticles] = useState<Article[]>([]);
@@ -57,15 +61,15 @@ export default function ProductionPage() {
       const safeDepartments = departmentsRes || departmentsRes || [];
       const safeArticles = articlesRes.items || articlesRes || [];
       const safeOperations = operationsRes.items || operationsRes || [];
-
       setWorkers(
         safeWorkers.map((worker: any) => ({
           _id: String(worker._id),
           name: worker.name,
           departmentId: worker.departmentId ? String(worker.departmentId) : undefined,
+          cnic: worker.cnic
         }))
       );
-      
+
       setDepartments(
         safeDepartments.map((dept: any) => ({
           _id: String(dept._id),
@@ -73,7 +77,7 @@ export default function ProductionPage() {
           code: dept.code,
         }))
       );
-      
+
       setArticles(
         safeArticles.map((article: any) => ({
           _id: String(article._id),
@@ -82,7 +86,7 @@ export default function ProductionPage() {
           status: article.status
         }))
       );
-      
+
       setOperations(
         safeOperations.map((operation: any) => ({
           _id: String(operation._id),
@@ -107,7 +111,8 @@ export default function ProductionPage() {
       );
 
       const response = await getProductionEntries(activeFilters);
-      const rawEntries = response.items || response || [];
+      const rawEntries = response.items || (Array.isArray(response) ? response : []);
+      const totalRecords = typeof response.total === "number" ? response.total : rawEntries.length;
 
       const mappedEntries: ProductionEntry[] = rawEntries.map((entry: any) => ({
         ...entry,
@@ -119,9 +124,11 @@ export default function ProductionPage() {
       }));
 
       setEntries(mappedEntries);
+      setTotal(totalRecords);
     } catch (err: any) {
       setError("Failed to load production records.");
       setEntries([]);
+      setTotal(0);
     } finally {
       setIsLoading(false);
     }
@@ -135,8 +142,13 @@ export default function ProductionPage() {
     loadProductionData();
   }, [loadProductionData]);
 
-  const handleFilterChange = (key: string, value: string) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
+  const handleFilterChange = (key: string, value: any) => {
+    setFilters((prev) => {
+      if (key !== "page" && key !== "limit") {
+        return { ...prev, [key]: value, page: 1 };
+      }
+      return { ...prev, [key]: value };
+    });
   };
 
   const handleResetFilters = () => {
@@ -159,8 +171,8 @@ export default function ProductionPage() {
         </button>
       </div>
 
-      <ProductionFilter 
-        filters={filters} 
+      <ProductionFilter
+        filters={filters}
         onFilterChange={handleFilterChange}
         onResetFilters={handleResetFilters}
         workers={workers}
@@ -181,14 +193,26 @@ export default function ProductionPage() {
           <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
         </div>
       ) : (
-        <ProductionTable 
-          entries={entries} 
-          workers={workers}
-          departments={departments}
-          articles={articles}
-          operations={operations}
-          onRefresh={loadProductionData} 
-        />
+        <div className="space-y-4">
+          <ProductionTable
+            entries={entries}
+            workers={workers}
+            departments={departments}
+            articles={articles}
+            operations={operations}
+            onRefresh={loadProductionData}
+          />
+
+          <Pagination
+            currentPage={filters.page}
+            pageSize={filters.limit}
+            total={total}
+            onPageChange={(page) => handleFilterChange("page", page)}
+            onPageSizeChange={(limit) => handleFilterChange("limit", limit)}
+            pageSizeOptions={[5, 10, 25, 50]}
+            itemLabel="production entries"
+          />
+        </div>
       )}
 
       <BatchProductionModal

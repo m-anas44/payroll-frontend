@@ -1,34 +1,39 @@
-import { usePayrollStore } from "@/store/payroll.store";
+import axios from "axios";
+
+export const getPayrolls = async (params?: Record<string, any>) => {
+  const response = await axios.get("/api/admin/payroll", { params });
+  return response.data;
+};
+
+export const getPayrollByMonth = async (month: string) => {
+  const response = await axios.get(`/api/admin/payroll/${month}`);
+  return response.data;
+};
+
+export const updatePayrollAdjustment = async (payload: {
+  payrollId: string;
+  workerId: string;
+  allowanceAmount?: number;
+  advanceAmount?: number;
+  eobiAmount?: number;
+  otherDeductions?: number;
+}) => {
+  const response = await axios.put("/api/admin/payroll/adjustments", payload);
+  return response.data;
+};
+
+export const updatePayrollStatus = async (payload: {
+  payrollId: string;
+  status: string;
+}) => {
+  const response = await axios.patch("/api/admin/payroll/status", payload);
+  return response.data;
+};
 
 export const PayrollHandler = {
-  generatePayroll: (month: string, generatedBy = "Admin", notes = "") => {
-    if (!month) {
-      return { success: false, message: "Month (YYYY-MM) is required.", record: null };
-    }
-    const record = usePayrollStore
-      .getState()
-      .generatePayrollForMonth(month, generatedBy, notes);
-    return {
-      success: true,
-      message: `Payroll for ${month} generated with ${record.items.length} worker summaries.`,
-      record,
-    };
-  },
-
-  updateAdjustment: (
-    month: string,
-    workerId: string,
-    bonuses: number,
-    deductions: number
-  ) => {
-    usePayrollStore
-      .getState()
-      .updateWorkerAdjustment(month, workerId, bonuses, deductions);
-    return { success: true, message: "Worker payment adjustment updated." };
-  },
-
-  updateStatus: (id: string, status: "Draft" | "Approved" | "Paid") => {
-    usePayrollStore.getState().updatePayrollStatus(id, status);
-    return { success: true, message: `Payroll status updated to ${status}.` };
-  },
+  getPayrolls,
+  getPayrollByMonth,
+  updatePayrollAdjustment,
+  updatePayrollStatus,
 };
+

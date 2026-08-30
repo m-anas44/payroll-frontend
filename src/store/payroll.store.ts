@@ -279,40 +279,61 @@ export const usePayrollStore = create<PayrollState>((set) => ({
 
     // Filter production entries strictly for the selected month (YYYY-MM)
     const monthEntries = productionEntries.filter((e) =>
-      e.date.startsWith(month)
+      e?.date?.startsWith(month)
     );
 
-    // Group production entries by workerId
+    // Group production entries by workerId (interpreting both multi-worker array and legacy single worker entries)
     const workerMap = new Map<string, WorkerPayrollSummary>();
 
     monthEntries.forEach((entry) => {
-      const worker = workers.find((w) => w.id === entry.workerId);
-      const existing = workerMap.get(entry.workerId);
+      const entryWorkerList =
+        entry.workers && entry.workers.length > 0
+          ? entry.workers
+          : entry.workerId
+          ? [
+              {
+                workerId: entry.workerId,
+                workerName: entry.workerName,
+                quantity: entry.quantity,
+                effectiveRate: entry.appliedRate || 0,
+                earnedAmount: entry.totalAmount || entry.totalPayment || 0,
+              },
+            ]
+          : [];
 
-      const gross = entry.totalPayment;
-      const qty = entry.quantity;
+      entryWorkerList.forEach((wEntry) => {
+        const wId = wEntry.workerId;
+        if (!wId) return;
 
-      if (existing) {
-        existing.totalQuantity += qty;
-        existing.grossEarnings += gross;
-        existing.netPayable += gross;
-        existing.totalEntriesCount += 1;
-      } else {
-        workerMap.set(entry.workerId, {
-          workerId: entry.workerId,
-          workerCode: entry.workerCode || worker?.workerCode || "W-000",
-          workerName: entry.workerName || worker?.name || "Worker",
-          cnic: worker?.cnic || "-",
-          departmentName: entry.departmentName || worker?.departmentName || "-",
-          totalQuantity: qty,
-          grossEarnings: gross,
-          bonuses: 0,
-          deductions: 0,
-          netPayable: gross,
-          totalEntriesCount: 1,
-        });
-      }
+        const worker = workers.find((w) => w._id === wId || (w as any).id === wId);
+        const existing = workerMap.get(wId);
+
+        const gross = Number(wEntry.earnedAmount || 0);
+        const qty = Number(wEntry.quantity || 0);
+
+        if (existing) {
+          existing.totalQuantity += qty;
+          existing.grossEarnings += gross;
+          existing.netPayable += gross;
+          existing.totalEntriesCount += 1;
+        } else {
+          workerMap.set(wId, {
+            workerId: wId,
+            workerCode: worker?.cnic || "",
+            workerName: wEntry.workerName || worker?.name || "Worker",
+            cnic: worker?.cnic || "-",
+            departmentName: entry.departmentName || worker?.departmentName || "-",
+            totalQuantity: qty,
+            grossEarnings: gross,
+            bonuses: 0,
+            deductions: 0,
+            netPayable: gross,
+            totalEntriesCount: 1,
+          });
+        }
+      });
     });
+
 
     const items = Array.from(workerMap.values());
     const totalWorkers = items.length;

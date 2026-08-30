@@ -3,33 +3,40 @@
 import React, { useState } from "react";
 import { MonthlyPayrollRecord, WorkerPayrollSummary } from "@/types/payroll";
 import { formatCurrency, formatQuantity } from "@/lib/currency";
-import { PayrollHandler } from "@/handlers/payroll.handler";
+import { updatePayrollAdjustment } from "@/handlers/payroll.handler";
 import { Edit3, Check, X } from "lucide-react";
 
 interface PayrollTableProps {
   record: MonthlyPayrollRecord;
+  onRefresh?: () => void;
 }
 
-export default function PayrollTable({ record }: PayrollTableProps) {
+export default function PayrollTable({ record, onRefresh }: PayrollTableProps) {
   const [editingWorkerId, setEditingWorkerId] = useState<string | null>(null);
   const [bonusesInput, setBonusesInput] = useState(0);
   const [deductionsInput, setDeductionsInput] = useState(0);
 
   const startEdit = (item: WorkerPayrollSummary) => {
     setEditingWorkerId(item.workerId);
-    setBonusesInput(item.bonuses);
-    setDeductionsInput(item.deductions);
+    setBonusesInput(item.bonuses || 0);
+    setDeductionsInput(item.deductions || 0);
   };
 
-  const saveEdit = (workerId: string) => {
-    PayrollHandler.updateAdjustment(
-      record.month,
-      workerId,
-      bonusesInput,
-      deductionsInput
-    );
-    setEditingWorkerId(null);
+  const saveEdit = async (workerId: string) => {
+    try {
+      await updatePayrollAdjustment({
+        payrollId: record.id,
+        workerId: workerId,
+        allowanceAmount: bonusesInput,
+        advanceAmount: deductionsInput,
+      });
+      onRefresh?.();
+      setEditingWorkerId(null);
+    } catch (err) {
+      console.error("Failed to update adjustment:", err);
+    }
   };
+
 
   return (
     <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-xs ">

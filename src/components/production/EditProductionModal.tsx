@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { X, Save, AlertCircle, Loader2, Calendar } from "lucide-react";
+import { X, Save, AlertCircle, Loader2, Calendar, Users, User } from "lucide-react";
 import CustomSelect, { SelectOption } from "@/components/common/CustomSelect";
 import { updateProductionEntry } from "@/handlers/production.handler";
 import { ProductionEntry } from "@/types/production";
@@ -52,6 +52,12 @@ export default function EditProductionModal({
   const [quantity, setQuantity] = useState<number | "">("");
   const [notes, setNotes] = useState("");
 
+  // Group task states
+  const [isGroupTask, setIsGroupTask] = useState(false);
+  const [totalGroupQty, setTotalGroupQty] = useState<number | "">("");
+  const [splitMode, setSplitMode] = useState<"equal" | "custom">("equal");
+  const [workerAllocations, setWorkerAllocations] = useState<{ workerId: string; workerName?: string; quantity: number }[]>([]);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -66,6 +72,28 @@ export default function EditProductionModal({
     setOperationId(extractId(entry.operationId || null));
     setQuantity(Number(entry.quantity) || "");
     setNotes(entry.notes || "");
+    setIsGroupTask(Boolean(entry.isGroupTask || (entry.workers && entry.workers.length > 1)));
+    setTotalGroupQty(entry.totalGroupQuantity || Number(entry.quantity) || "");
+
+    if (entry.workers && entry.workers.length > 0) {
+      setWorkerAllocations(
+        entry.workers.map((w) => ({
+          workerId: String(w.workerId),
+          workerName: w.workerName,
+          quantity: Number(w.quantity) || 0,
+        }))
+      );
+    } else if (entry.workerId) {
+      setWorkerAllocations([
+        {
+          workerId: String(entry.workerId),
+          workerName: entry.workerName,
+          quantity: Number(entry.quantity) || 0,
+        },
+      ]);
+    } else {
+      setWorkerAllocations([]);
+    }
 
     setErrorMessage("");
   }, [isOpen, entry]);
@@ -87,31 +115,76 @@ export default function EditProductionModal({
     [operations]
   );
 
-  const handleSubmit = async (event: React.SubmitEvent) => {
+  const handleWorkerQtyChange = (wId: string, val: number) => {
+    setWorkerAllocations((prev) =>
+      prev.map((item) => (item.workerId === wId ? { ...item, quantity: val } : item))
+    );
+  };
+
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setErrorMessage("");
 
     if (!entry) return;
-    if (!productionDate || !workerId || !departmentId || !articleId || !operationId) {
+    if (!productionDate || !departmentId || !articleId || !operationId) {
       setErrorMessage("All required fields must be filled.");
       return;
     }
-    if (!quantity || Number(quantity) <= 0) {
-      setErrorMessage("Quantity must be greater than zero.");
-      return;
-    }
 
-    const productionId = entry._id || entry.id;
+    const productionId = entry._id || (entry as any).id;
     setIsSubmitting(true);
 
     try {
-      await updateProductionEntry(productionId, {
-        productionDate,
-        quantity: Number(quantity),
-        notes: notes || undefined,
-        articleId,
-        operationId,
-      });
+      if (isGroupTask) {
+        const tQty = Number(totalGroupQty || quantity || 0);
+        if (tQty <= 0) {
+          setErrorMessage("Total group quantity must be greater than zero.");
+          setIsSubmitting(false);
+          return;
+        }
+
+        let updatedWorkers = workerAllocations;
+        if (splitMode === "equal" && workerAllocations.length > 0) {
+          const perWorker = Number((tQty / workerAllocations.length).toFixed(4));
+          updatedWorkers = workerAllocations.map((w) => ({ ...w, quantity: perWorker }));
+        } else if (splitMode === "custom") {
+          const customSum = workerAllocations.reduce((sum, w) => sum + (Number(w.quantity) || 0), 0);
+          if (Math.abs(customSum - tQty) > 0.01) {
+            setErrorMessage(`Custom worker quantities sum (${customSum}) does not match total group quantity (${tQty}).`);
+            setIsSubmitting(false);
+            return;
+          }
+        }
+
+        await updateProductionEntry(productionId, {
+          productionDate,
+          articleId,
+          operationId,
+          notes: notes || undefined,
+          isGroupTask: true,
+          totalGroupQuantity: tQty,
+          quantity: tQty,
+          splitMode,
+          workers: updatedWorkers.map((w) => ({
+            workerId: w.workerId,
+            quantity: w.quantity,
+          })),
+        });
+      } else {
+        if (!quantity || Number(quantity) <= 0) {
+          setErrorMessage("Quantity must be greater than zero.");
+          setIsSubmitting(false);
+          return;
+        }
+
+        await updateProductionEntry(productionId, {
+          productionDate,
+          quantity: Number(quantity),
+          notes: notes || undefined,
+          articleId,
+          operationId,
+        });
+      }
 
       await onSuccess?.();
       onClose();
@@ -131,11 +204,14 @@ export default function EditProductionModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-      <div className="flex w-full max-w-2xl flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+      <div className="flex w-full max-w-2xl flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between border-b border-slate-100 pb-4">
           <div>
-            <h3 className="text-base font-bold text-slate-900">Edit Production Record</h3>
-            <p className="mt-0.5 text-xs text-slate-500">Update pieces, notes, article, or operation.</p>
+            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              {isGroupTask ? <Users className="h-5 w-5 text-blue-600" /> : <User className="h-5 w-5 text-blue-600" />}
+              Edit Production Record {isGroupTask && "(Team Task)"}
+            </h3>
+            <p className="mt-0.5 text-xs text-slate-500">Update pieces, notes, article, operation, or worker allocations.</p>
           </div>
           <button type="button" onClick={onClose} disabled={isSubmitting} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100">
             <X className="h-5 w-5" />
@@ -166,16 +242,6 @@ export default function EditProductionModal({
             </div>
 
             <CustomSelect
-              label="Worker (Locked)"
-              required
-              options={workerOptions}
-              value={workerId}
-              onChange={() => {}}
-              placeholder="Select worker"
-              disabled={true}
-            />
-
-            <CustomSelect
               label="Department (Locked)"
               required
               options={departmentOptions}
@@ -186,7 +252,7 @@ export default function EditProductionModal({
             />
 
             <CustomSelect
-              label="Article"
+              label="Article *"
               required
               options={articleOptions}
               value={articleId}
@@ -196,7 +262,7 @@ export default function EditProductionModal({
             />
 
             <CustomSelect
-              label="Operation"
+              label="Operation *"
               required
               options={operationOptions}
               value={operationId}
@@ -205,19 +271,94 @@ export default function EditProductionModal({
               disabled={isSubmitting}
             />
 
-            <div>
-              <label className="mb-1 block text-[11px] font-bold text-slate-700">Quantity *</label>
-              <input
-                type="number"
-                min="1"
-                value={quantity}
-                onChange={(event) => setQuantity(event.target.value === "" ? "" : Number(event.target.value))}
-                disabled={isSubmitting}
-                placeholder="Enter quantity"
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:outline-none"
-              />
-            </div>
+            {!isGroupTask ? (
+              <div>
+                <label className="mb-1 block text-[11px] font-bold text-slate-700">Completed Pieces (Q) *</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={quantity}
+                  onChange={(event) => setQuantity(event.target.value === "" ? "" : Number(event.target.value))}
+                  disabled={isSubmitting}
+                  placeholder="Enter quantity"
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-900 focus:border-blue-600 focus:outline-none"
+                />
+              </div>
+            ) : (
+              <div>
+                <label className="mb-1 block text-[11px] font-bold text-slate-700">Total Group Pieces (Q) *</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={totalGroupQty}
+                  onChange={(event) => setTotalGroupQty(event.target.value === "" ? "" : Number(event.target.value))}
+                  disabled={isSubmitting}
+                  placeholder="Enter total group quantity"
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-900 focus:border-blue-600 focus:outline-none"
+                />
+              </div>
+            )}
+
+            {isGroupTask && (
+              <div>
+                <label className="mb-1 block text-[11px] font-bold text-slate-700">Split Mode</label>
+                <div className="flex rounded-lg border border-slate-300 bg-white p-0.5 text-xs h-[38px] items-center">
+                  <button
+                    type="button"
+                    onClick={() => setSplitMode("equal")}
+                    className={`flex-1 rounded-md py-1 text-center font-bold transition-colors ${
+                      splitMode === "equal" ? "bg-blue-600 text-white" : "text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    Equal Split
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSplitMode("custom")}
+                    className={`flex-1 rounded-md py-1 text-center font-bold transition-colors ${
+                      splitMode === "custom" ? "bg-blue-600 text-white" : "text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    Custom Allocation
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
+
+          {/* Group Workers Allocations Table */}
+          {isGroupTask && workerAllocations.length > 0 && (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <div className="mb-2 text-xs font-bold text-slate-700 flex justify-between items-center">
+                <span>Assigned Team Members ({workerAllocations.length})</span>
+                {splitMode === "equal" && totalGroupQty !== "" && (
+                  <span className="text-blue-600 font-semibold">
+                    {(Number(totalGroupQty) / workerAllocations.length).toFixed(2)} pcs / worker
+                  </span>
+                )}
+              </div>
+              <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                {workerAllocations.map((w, idx) => (
+                  <div key={w.workerId || idx} className="flex items-center justify-between bg-white px-3 py-1.5 rounded border border-slate-200 text-xs">
+                    <span className="font-bold text-slate-800">{w.workerName || `Worker ${w.workerId}`}</span>
+                    {splitMode === "equal" ? (
+                      <span className="font-bold text-slate-600">
+                        {totalGroupQty !== "" ? (Number(totalGroupQty) / workerAllocations.length).toFixed(2) : 0} pcs
+                      </span>
+                    ) : (
+                      <input
+                        type="number"
+                        min="0"
+                        value={w.quantity}
+                        onChange={(e) => handleWorkerQtyChange(w.workerId, Number(e.target.value))}
+                        className="w-24 rounded border border-slate-300 px-2 py-0.5 text-right font-bold text-xs focus:border-blue-600 focus:outline-none"
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="mb-1 block text-[11px] font-bold text-slate-700">Notes</label>
@@ -244,4 +385,4 @@ export default function EditProductionModal({
       </div>
     </div>
   );
-}
+}
