@@ -7,7 +7,8 @@ export async function POST(request: NextRequest) {
     const response = await apiClient.post("/auth/login", body);
 
     const resData = response.data;
-    const token = resData?.token || resData?.access_token || resData?.accessToken;
+    const token = resData?.accessToken || resData?.access_token || resData?.token;
+    const refreshToken = resData?.refreshToken || resData?.refresh_token;
     const user = resData?.user;
 
     const rawUserRole = user?.role ? String(user.role).toLowerCase() : "";
@@ -39,16 +40,16 @@ export async function POST(request: NextRequest) {
     const responseObj = NextResponse.json(responseBody, { status: 200 });
 
     if (token) {
-      // 1. Set HTTP-Only access token cookie
+      // 1. Set HTTP-Only access token cookie (15 minutes)
       responseObj.cookies.set("__payrollAccessToken__", token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "strict",
         path: "/",
-        maxAge: 7 * 24 * 60 * 60,
+        maxAge: 15 * 60,
       });
 
-      // 2. Set userRole cookie for Next.js route guarding
+      // 2. Set userRole cookie for Next.js route guarding (not httpOnly — read by middleware)
       if (normalizedUserRole) {
         responseObj.cookies.set("userRole", normalizedUserRole, {
           httpOnly: false,
@@ -58,6 +59,17 @@ export async function POST(request: NextRequest) {
           maxAge: 7 * 24 * 60 * 60,
         });
       }
+    }
+
+    if (refreshToken) {
+      // 3. Set HTTP-Only refresh token cookie (7 days)
+      responseObj.cookies.set("__payrollRefreshToken__", refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        path: "/",
+        maxAge: 7 * 24 * 60 * 60,
+      });
     }
 
     return responseObj;
@@ -70,4 +82,4 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ error: errorMessage }, { status });
   }
-}
+}

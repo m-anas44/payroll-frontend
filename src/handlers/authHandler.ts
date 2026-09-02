@@ -1,4 +1,4 @@
-import axios from "axios";
+import { browserClient as axios } from "@/lib/browserClient";
 
 export async function login(payload: any) {
   try {

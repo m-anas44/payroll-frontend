@@ -1,4 +1,4 @@
-import axios from "axios";
+import { browserClient as axios } from "@/lib/browserClient";
 
 export const getPayrolls = async (params?: Record<string, any>) => {
   const response = await axios.get("/api/admin/payroll", { params });
@@ -22,6 +22,22 @@ export const updatePayrollAdjustment = async (payload: {
   return response.data;
 };
 
+export const updatePayrollItem = async (payload: {
+  payrollId: string;
+  workerId: string;
+  workingDays?: number;
+  sundayDays?: number;
+  otherEarnings?: number;
+  allowanceAmount?: number;
+  minimumWageAdjustment?: number;
+  advanceAmount?: number;
+  eobiAmount?: number;
+  otherDeductions?: number;
+}) => {
+  const response = await axios.put("/api/admin/payroll/adjustments", payload);
+  return response.data;
+};
+
 export const updatePayrollStatus = async (payload: {
   payrollId: string;
   status: string;
@@ -34,6 +50,7 @@ export const PayrollHandler = {
   getPayrolls,
   getPayrollByMonth,
   updatePayrollAdjustment,
+  updatePayrollItem,
   updatePayrollStatus,
 };
 

@@ -12,7 +12,7 @@ function getAuthHeaders(request: NextRequest) {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { month: string } }
+  { params }: { params: Promise<{ month: string }> }
 ) {
   const headers = getAuthHeaders(request);
 
@@ -21,7 +21,7 @@ export async function GET(
   }
 
   try {
-    const { month } = params;
+    const { month } = await params;
     const response = await apiClient.get(`/admin/payroll/${month}`, { headers });
     return NextResponse.json(response.data, { status: 200 });
   } catch (error: any) {

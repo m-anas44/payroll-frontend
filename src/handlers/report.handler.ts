@@ -1,3 +1,4 @@
+import { browserClient as axios } from "@/lib/browserClient";
 import { useProductionStore } from "@/store/production.store";
 import { useWorkerStore } from "@/store/worker.store";
 import { useMasterDataStore } from "@/store/masterData.store";
@@ -9,6 +10,7 @@ import {
 } from "@/types/report";
 
 export const ReportHandler = {
+  // Legacy frontend-based reports (keeping for backward compatibility)
   getLabourWiseReport: (month?: string): LabourWiseReportRow[] => {
     const entries = useProductionStore.getState().entries;
     const workers = useWorkerStore.getState().workers;
@@ -100,5 +102,89 @@ export const ReportHandler = {
       totalPayout: r.totalNetPayable,
       status: r.status,
     }));
+  },
+
+  // Backend-based reports
+  async getLabourWiseReportFromBackend(month: string): Promise<any> {
+    try {
+      const response = await axios.get("/api/admin/payroll/reports/labour-wise", {
+        params: { month },
+      });
+      return response.data.items || [];
+    } catch (error) {
+      console.error("Failed to fetch labour-wise report from backend:", error);
+      throw error;
+    }
+  },
+
+  async getDepartmentWiseReportFromBackend(month: string): Promise<any> {
+    try {
+      const response = await axios.get("/api/admin/payroll/reports/department-wise", {
+        params: { month },
+      });
+      return response.data.items || [];
+    } catch (error) {
+      console.error("Failed to fetch department-wise report from backend:", error);
+      throw error;
+    }
+  },
+
+  async downloadLabourWiseReportPDF(month: string): Promise<void> {
+    try {
+      const response = await axios.get("/api/admin/payroll/reports/labour-wise/pdf", {
+        params: { month },
+        responseType: "blob",
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `labour_wise_report_${month}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Failed to download labour-wise report PDF:", error);
+      throw error;
+    }
+  },
+
+  async downloadDepartmentWiseReportPDF(month: string): Promise<void> {
+    try {
+      const response = await axios.get("/api/admin/payroll/reports/department-wise/pdf", {
+        params: { month },
+        responseType: "blob",
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `department_wise_report_${month}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Failed to download department-wise report PDF:", error);
+      throw error;
+    }
+  },
+
+  async downloadPayrollPDF(payrollItemId: string, workerCode: string): Promise<void> {
+    try {
+      const response = await axios.get(`/api/admin/payroll/pdf/${payrollItemId}`, {
+        responseType: "blob",
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `payroll_${workerCode}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Failed to download payroll PDF:", error);
+      throw error;
+    }
   },
 };

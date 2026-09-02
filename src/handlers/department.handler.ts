@@ -1,4 +1,4 @@
-import axios from "axios";
+import { browserClient as axios } from "@/lib/browserClient";
 import { Department } from "@/types/department";
 
 const normalizeDepartment = (item: any): Department => ({

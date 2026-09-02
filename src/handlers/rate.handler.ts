@@ -1,4 +1,4 @@
-import axios from "axios";
+import { browserClient as axios } from "@/lib/browserClient";
 import { PieceRate } from "@/types/rate";
 
 export interface RateQueryParams {

@@ -1,4 +1,4 @@
-import axios from "axios";
+import { browserClient as axios } from "@/lib/browserClient";
 import { Worker, PoliceVerificationStatus, WorkerGender, WorkerStatus } from "@/types/worker";
 import { isValidCNIC } from "@/lib/validators";
 

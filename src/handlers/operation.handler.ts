@@ -1,4 +1,4 @@
-import axios from "axios";
+import { browserClient as axios } from "@/lib/browserClient";
 import { Operation } from "@/types/operation";
 
 export async function getOperations(params?: {
