@@ -1,0 +1,234 @@
+"use client";
+
+import React, { useEffect, useState, useCallback } from "react";
+import ProductionFilter from "@/components/production/ProductionFilter";
+import ProductionTable from "@/components/production/ProductionTable";
+import BatchProductionModal from "@/components/production/BatchProductionModal";
+import Pagination from "@/components/common/Pagination";
+import { Layers, Loader2, AlertCircle } from "lucide-react";
+import { getProductionEntries } from "@/handlers/production.handler";
+import { getWorkers } from "@/handlers/worker.handler";
+import { getDepartments } from "@/handlers/department.handler";
+import { getArticles } from "@/handlers/article.handler";
+import { getOperations } from "@/handlers/operation.handler";
+
+import { ProductionEntry } from "@/types/production";
+import { Worker } from "@/types/worker";
+import { Department } from "@/types/department";
+import { Article } from "@/types/article";
+import { Operation } from "@/types/operation";
+
+const INITIAL_FILTERS = {
+  searchQuery: "",
+  startDate: "",
+  endDate: "",
+  departmentId: "",
+  workerId: "",
+  articleId: "",
+  operationId: "",
+  page: 1,
+  limit: 20,
+};
+
+import Heading from "@/components/common/Heading";
+
+export default function OperatorProductionPage() {
+  const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
+
+  const [entries, setEntries] = useState<ProductionEntry[]>([]);
+  const [total, setTotal] = useState(0);
+  const [workers, setWorkers] = useState<Worker[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [operations, setOperations] = useState<Operation[]>([]);
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingLookup, setIsLoadingLookup] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [filters, setFilters] = useState(INITIAL_FILTERS);
+
+  const fetchLookupData = async () => {
+    setIsLoadingLookup(true);
+    try {
+      const [workersRes, departmentsRes, articlesRes, operationsRes] =
+        await Promise.all([
+          getWorkers({ status: "active" }),
+          getDepartments(),
+          getArticles(),
+          getOperations(),
+        ]);
+
+      const safeWorkers = workersRes.items || workersRes || [];
+      const safeDepartments = departmentsRes || departmentsRes || [];
+      const safeArticles = articlesRes.items || articlesRes || [];
+      const safeOperations = operationsRes.items || operationsRes || [];
+
+      setWorkers(
+        safeWorkers.map((worker: any) => ({
+          _id: String(worker._id || worker.id),
+          name: worker.name,
+          departmentId: worker.departmentId ? String(worker.departmentId) : undefined,
+          cnic: worker.cnic,
+        }))
+      );
+
+      setDepartments(
+        safeDepartments.map((dept: any) => ({
+          _id: String(dept._id || dept.id),
+          name: dept.name,
+          code: dept.code,
+        }))
+      );
+
+      setArticles(
+        safeArticles.map((article: any) => ({
+          _id: String(article._id || article.id),
+          name: article.name,
+          articleNumber: article.articleNumber,
+          status: article.status,
+        }))
+      );
+
+      setOperations(
+        safeOperations.map((operation: any) => ({
+          _id: String(operation._id || operation.id),
+          code: operation.code,
+          name: operation.name,
+        }))
+      );
+    } catch (err: any) {
+      console.error("Failed to load lookup data:", err);
+      setError("Failed to load dropdown data. Please refresh the page.");
+    } finally {
+      setIsLoadingLookup(false);
+    }
+  };
+
+  const loadProductionData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const activeFilters = Object.fromEntries(
+        Object.entries(filters).filter(([_, value]) => value !== "" && value !== "ALL")
+      );
+
+      const response = await getProductionEntries(activeFilters);
+      const rawEntries = response.items || (Array.isArray(response) ? response : []);
+      const totalRecords = typeof response.total === "number" ? response.total : rawEntries.length;
+
+      const mappedEntries: ProductionEntry[] = rawEntries.map((entry: any) => ({
+        ...entry,
+        id: entry._id || entry.id || "temp-id",
+        date: entry.productionDate || entry.date || "",
+        rateApplied: entry.rate || 0,
+        totalPayment: entry.totalAmount || 0,
+        createdBy: entry.createdBy || "Operator",
+      }));
+
+      setEntries(mappedEntries);
+      setTotal(totalRecords);
+    } catch (err: any) {
+      setError("Failed to load production records.");
+      setEntries([]);
+      setTotal(0);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [filters]);
+
+  useEffect(() => {
+    fetchLookupData();
+  }, []);
+
+  useEffect(() => {
+    loadProductionData();
+  }, [loadProductionData]);
+
+  const handleFilterChange = (key: string, value: any) => {
+    setFilters((prev) => {
+      if (key !== "page" && key !== "limit") {
+        return { ...prev, [key]: value, page: 1 };
+      }
+      return { ...prev, [key]: value };
+    });
+  };
+
+  const handleResetFilters = () => {
+    setFilters(INITIAL_FILTERS);
+  };
+
+  return (
+    <div className="space-y-6">
+      <Heading
+        title="Operator Production Console"
+        subtitle="Log daily piece-rate production for workers in your assigned department(s)."
+        icon={Layers}
+        actions={
+          <button
+            onClick={() => setIsBatchModalOpen(true)}
+            className="flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
+          >
+            <Layers className="h-4 w-4" />
+            <span>+ Log Production Entry</span>
+          </button>
+        }
+      />
+
+      <ProductionFilter
+        filters={filters}
+        onFilterChange={handleFilterChange}
+        onResetFilters={handleResetFilters}
+        workers={workers}
+        departments={departments}
+        articles={articles}
+        operations={operations}
+      />
+
+      {error && (
+        <div className="flex items-center gap-2 rounded-lg bg-red-50 p-4 text-sm font-semibold text-red-700 border border-red-100">
+          <AlertCircle className="h-5 w-5 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      {isLoading ? (
+        <div className="flex h-64 items-center justify-center rounded-xl border border-slate-200 bg-white">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <ProductionTable
+            entries={entries}
+            workers={workers}
+            departments={departments}
+            articles={articles}
+            operations={operations}
+            onRefresh={loadProductionData}
+          />
+
+          <Pagination
+            currentPage={filters.page}
+            pageSize={filters.limit}
+            total={total}
+            onPageChange={(page) => handleFilterChange("page", page)}
+            onPageSizeChange={(limit) => handleFilterChange("limit", limit)}
+            pageSizeOptions={[5, 10, 25, 50]}
+            itemLabel="production entries"
+          />
+        </div>
+      )}
+
+      <BatchProductionModal
+        isOpen={isBatchModalOpen}
+        onClose={() => setIsBatchModalOpen(false)}
+        onSuccess={loadProductionData}
+        workers={workers}
+        departments={departments}
+        articles={articles}
+        operations={operations}
+        isLoadingData={isLoadingLookup}
+      />
+    </div>
+  );
+}

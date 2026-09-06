@@ -9,15 +9,16 @@ import ExportButton from "@/components/excel/ExportButton";
 import ConfirmDeleteModal from "@/components/common/ConfirmDeleteModal";
 import { useAuthStore } from "@/store/auth.store";
 import { useWorkerStore } from "@/store/worker.store";
-import { UserPlus, FileDown } from "lucide-react";
+import { UserPlus, FileDown, Users2 } from "lucide-react";
 import { deleteWorker, getWorkers } from "@/handlers/worker.handler";
 import { getDepartments } from "@/handlers/department.handler";
 import { Worker } from "@/types/worker";
 import { Department } from "@/types/department";
+import Heading from "@/components/common/Heading";
 
 export default function WorkersPage() {
   const { currentUser } = useAuthStore();
-  const isAdmin = currentUser?.role === "Admin";
+  const isAdmin = currentUser?.role === "admin";
   const {
     searchQuery,
     departmentFilter,
@@ -134,41 +135,36 @@ export default function WorkersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-2xl font-black tracking-tight text-slate-900">
-            Worker Registration & CNIC Directory
-          </h1>
-          <p className="mt-1 text-xs text-slate-500">
-            Maintain unique worker codes, verified CNICs, assigned departments,
-            and police verification statuses.
-          </p>
-        </div>
+      <Heading
+        title="Worker Registration & CNIC Directory"
+        subtitle="Maintain unique worker codes, verified CNICs, assigned departments, and police verification statuses."
+        icon={Users2}
+        actions={
+          <div className="flex items-center gap-2">
+            <ExportButton type="workers" label="Export" />
 
-        <div className="flex items-center gap-2">
-          <ExportButton type="workers" label="Export" />
+            {isAdmin && (
+              <>
+                <button
+                  onClick={() => setIsImportModalOpen(true)}
+                  className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 shadow-xs transition-colors hover:bg-slate-50 cursor-pointer"
+                >
+                  <FileDown className="h-4 w-4 text-blue-600" />
+                  <span>Import</span>
+                </button>
 
-          {isAdmin && (
-            <>
-              <button
-                onClick={() => setIsImportModalOpen(true)}
-                className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-xs transition-colors hover:bg-slate-50"
-              >
-                <FileDown className="h-3.5 w-3.5 text-blue-600" />
-                <span>Import</span>
-              </button>
-
-              <button
-                onClick={() => setIsAddModalOpen(true)}
-                className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-1.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-blue-700"
-              >
-                <UserPlus className="h-3.5 w-3.5" />
-                <span>Add Worker</span>
-              </button>
-            </>
-          )}
-        </div>
-      </div>
+                <button
+                  onClick={() => setIsAddModalOpen(true)}
+                  className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-xs transition-colors hover:bg-blue-700 cursor-pointer"
+                >
+                  <UserPlus className="h-4 w-4" />
+                  <span>Add Worker</span>
+                </button>
+              </>
+            )}
+          </div>
+        }
+      />
 
       <WorkerFilter
         departments={departments}

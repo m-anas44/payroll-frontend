@@ -79,7 +79,7 @@ const toApiPayload = (data: any) => {
 export async function getWorkers(params?: Record<string, string | number | undefined>) {
   try {
     const response = await axios.get("/api/admin/workers", { params });
-    const payload = response.data ?? {};
+    const payload = response.data?.data ?? response.data ?? {};
     const items = Array.isArray(payload.items)
       ? payload.items
       : Array.isArray(payload)
@@ -94,6 +94,7 @@ export async function getWorkers(params?: Record<string, string | number | undef
     };
   } catch (error: any) {
     const message =
+      error.response?.data?.message ||
       error.response?.data?.error ||
       error.response?.data?.detail ||
       "Unable to load workers.";
@@ -113,9 +114,10 @@ export async function addWorker(data: any) {
   try {
     const payload = toApiPayload(data);
     const response = await axios.post("/api/admin/workers", payload);
-    return response.data;
+    return response.data?.data ?? response.data;
   } catch (error: any) {
     const message =
+      error.response?.data?.message ||
       error.response?.data?.error ||
       error.response?.data?.detail ||
       "Unable to create worker.";
@@ -131,9 +133,10 @@ export async function updateWorker(id: string, updates: any) {
   try {
     const payload = toApiPayload(updates);
     const response = await axios.put(`/api/admin/workers/${id}`, payload);
-    return response.data;
+    return response.data?.data ?? response.data;
   } catch (error: any) {
     const message =
+      error.response?.data?.message ||
       error.response?.data?.error ||
       error.response?.data?.detail ||
       "Unable to update worker.";
@@ -144,9 +147,10 @@ export async function updateWorker(id: string, updates: any) {
 export async function deleteWorker(id: string) {
   try {
     const response = await axios.delete(`/api/admin/workers/${id}`);
-    return response.data;
+    return response.data?.data ?? response.data;
   } catch (error: any) {
     const message =
+      error.response?.data?.message ||
       error.response?.data?.error ||
       error.response?.data?.detail ||
       "Unable to delete worker.";

@@ -7,3 +7,16 @@ export interface Article {
   createdAt?: string;
   updatedAt?: string;
 }
+
+export interface GetArticlesParams {
+  search?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface GetArticlesResponse {
+  items: Article[];
+  total: number;
+  page: number;
+  limit: number;
+}

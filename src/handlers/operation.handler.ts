@@ -1,4 +1,5 @@
 import { browserClient as axios } from "@/lib/browserClient";
+import { handleApiError } from "@/lib/errorHandler";
 import { Operation } from "@/types/operation";
 
 export async function getOperations(params?: {
@@ -6,16 +7,20 @@ export async function getOperations(params?: {
   page?: number;
   limit?: number;
 }) {
-  const response = await axios.get("/api/admin/operations", { params });
-  const payload = response.data ?? {};
-  const items = Array.isArray(payload.items) ? payload.items : [];
+  try {
+    const response = await axios.get("/api/admin/operations", { params });
+    const payload = response.data?.data ?? response.data ?? {};
+    const items = Array.isArray(payload.items) ? payload.items : [];
 
-  return {
-    items: items,
-    total: Number(payload.total ?? items.length ?? 0),
-    page: Number(payload.page ?? 1),
-    limit: Number(payload.limit ?? items.length ?? 20),
-  };
+    return {
+      items: items,
+      total: Number(payload.total ?? items.length ?? 0),
+      page: Number(payload.page ?? 1),
+      limit: Number(payload.limit ?? items.length ?? 20),
+    };
+  } catch (error) {
+    return handleApiError(error, "Failed to fetch operations.");
+  }
 }
 
 export async function createOperation(
@@ -34,8 +39,12 @@ export async function createOperation(
     status: data.status === "Inactive" ? "inactive" : "active",
   };
 
-  const response = await axios.post("/api/admin/operations", payload);
-  return response.data;
+  try {
+    const response = await axios.post("/api/admin/operations", payload);
+    return response.data?.data ?? response.data;
+  } catch (error) {
+    return handleApiError(error, "Failed to create operation.");
+  }
 }
 
 export async function updateOperation(id: string, updates: Partial<Operation>) {
@@ -54,11 +63,19 @@ export async function updateOperation(id: string, updates: Partial<Operation>) {
     payload.status = updates.status === "Inactive" ? "inactive" : "active";
   }
 
-  const response = await axios.put(`/api/admin/operations/${id}`, payload);
-  return response.data;
+  try {
+    const response = await axios.put(`/api/admin/operations/${id}`, payload);
+    return response.data?.data ?? response.data;
+  } catch (error) {
+    return handleApiError(error, "Failed to update operation.");
+  }
 }
 
 export async function deleteOperation(id: string) {
-  await axios.delete(`/api/admin/operations/${id}`);
-  return true;
+  try {
+    await axios.delete(`/api/admin/operations/${id}`);
+    return true;
+  } catch (error) {
+    return handleApiError(error, "Failed to delete operation.");
+  }
 }

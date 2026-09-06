@@ -4,23 +4,19 @@ import React, { useState } from "react";
 import LabourWiseReport from "@/components/reports/LabourWiseReport";
 import DepartmentWiseReport from "@/components/reports/DepartmentWiseReport";
 import MonthlyPayrollReport from "@/components/reports/MonthlyPayrollReport";
-import { UserCheck, Building2, CalendarRange } from "lucide-react";
+import { UserCheck, Building2, CalendarRange, BarChart3 } from "lucide-react";
+import Heading from "@/components/common/Heading";
 
 export default function ReportsPage() {
   const [activeTab, setActiveTab] = useState<"labour" | "department" | "monthly">("labour");
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-            Payroll & Production Analytical Reports
-          </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Detailed reports on worker piece productivity, department cost allocation, and monthly payroll trends.
-          </p>
-        </div>
-      </div>
+      <Heading
+        title="Payroll & Production Analytical Reports"
+        subtitle="Detailed reports on worker piece productivity, department cost allocation, and monthly payroll trends."
+        icon={BarChart3}
+      />
 
       <div className="flex flex-wrap border-b border-slate-200 gap-1">
         <button

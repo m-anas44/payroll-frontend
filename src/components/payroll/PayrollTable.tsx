@@ -9,6 +9,8 @@ import { Edit3, Check, X, Download } from "lucide-react";
 import PayrollItemModal from "./PayrollItemModal";
 import { toast } from "sonner";
 
+import Pagination from "@/components/common/Pagination";
+
 interface PayrollTableProps {
   record: MonthlyPayrollRecord;
   onRefresh?: () => void;
@@ -20,6 +22,9 @@ export default function PayrollTable({ record, onRefresh }: PayrollTableProps) {
   const [deductionsInput, setDeductionsInput] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const startEdit = (item: WorkerPayrollSummary) => {
     setEditingWorkerId(item.workerId);
@@ -54,14 +59,12 @@ export default function PayrollTable({ record, onRefresh }: PayrollTableProps) {
 
   const downloadPayrollPDF = async (workerId: string) => {
     try {
-      // Find the payroll item for this worker
       const workerItem = record.items.find((item) => item.workerId === workerId);
       if (!workerItem) {
         toast.error("Worker payroll item not found");
         return;
       }
       
-      // Download the PDF using the handler
       await ReportHandler.downloadPayrollPDF(workerItem.id, workerItem.workerCode);
       toast.success("Payroll PDF downloaded successfully!");
     } catch (err: any) {
@@ -70,11 +73,16 @@ export default function PayrollTable({ record, onRefresh }: PayrollTableProps) {
     }
   };
 
+  const paginatedItems = record.items.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+
   return (
     <>
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-xs ">
+      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-xs">
         <table className="w-full text-left text-xs">
-          <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200 ">
+          <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">
             <tr>
               <th className="px-4 py-3">Worker Code / Name</th>
               <th className="px-4 py-3">CNIC</th>
@@ -98,7 +106,7 @@ export default function PayrollTable({ record, onRefresh }: PayrollTableProps) {
                 </td>
               </tr>
             ) : (
-              record.items.map((item) => {
+              paginatedItems.map((item) => {
                 const isEditing = editingWorkerId === item.workerId;
                 return (
                   <tr
@@ -110,21 +118,21 @@ export default function PayrollTable({ record, onRefresh }: PayrollTableProps) {
                         <span className="font-mono text-[10px] bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded font-bold">
                           {item.workerCode}
                         </span>
-                        <span className="font-bold text-slate-900 ">
+                        <span className="font-bold text-slate-900">
                           {item.workerName}
                         </span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 font-mono text-slate-600 ">
+                    <td className="px-4 py-3 font-mono text-slate-600">
                       {item.cnic}
                     </td>
-                    <td className="px-4 py-3 text-slate-700 ">
+                    <td className="px-4 py-3 text-slate-700">
                       {item.departmentName}
                     </td>
-                    <td className="px-4 py-3 text-right font-extrabold text-slate-900 ">
+                    <td className="px-4 py-3 text-right font-extrabold text-slate-900">
                       {formatQuantity(item.totalQuantity)}
                     </td>
-                    <td className="px-4 py-3 text-right font-mono font-bold text-slate-800 ">
+                    <td className="px-4 py-3 text-right font-mono font-bold text-slate-800">
                       {formatCurrency(item.grossEarnings)}
                     </td>
                     <td className="px-4 py-3 text-right font-mono text-emerald-600">
@@ -135,7 +143,7 @@ export default function PayrollTable({ record, onRefresh }: PayrollTableProps) {
                           onChange={(e) =>
                             setBonusesInput(parseFloat(e.target.value) || 0)
                           }
-                          className="w-20 rounded border border-slate-300 px-1.5 py-0.5 text-right font-bold focus:outline-none "
+                          className="w-20 rounded border border-slate-300 px-1.5 py-0.5 text-right font-bold focus:outline-none"
                         />
                       ) : (
                         formatCurrency(item.bonuses)
@@ -149,13 +157,13 @@ export default function PayrollTable({ record, onRefresh }: PayrollTableProps) {
                           onChange={(e) =>
                             setDeductionsInput(parseFloat(e.target.value) || 0)
                           }
-                          className="w-20 rounded border border-slate-300 px-1.5 py-0.5 text-right font-bold focus:outline-none "
+                          className="w-20 rounded border border-slate-300 px-1.5 py-0.5 text-right font-bold focus:outline-none"
                         />
                       ) : (
                         formatCurrency(item.deductions)
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right font-black text-emerald-700 ">
+                    <td className="px-4 py-3 text-right font-black text-emerald-700">
                       {formatCurrency(item.netPayable)}
                     </td>
                     <td className="px-4 py-3 text-right">
@@ -164,14 +172,14 @@ export default function PayrollTable({ record, onRefresh }: PayrollTableProps) {
                           <>
                             <button
                               onClick={() => saveEdit(item.workerId)}
-                              className="rounded bg-emerald-600 p-1 text-white hover:bg-emerald-700"
+                              className="rounded bg-emerald-600 p-1 text-white hover:bg-emerald-700 cursor-pointer"
                               title="Save Adjustments"
                             >
                               <Check className="h-3.5 w-3.5" />
                             </button>
                             <button
                               onClick={() => setEditingWorkerId(null)}
-                              className="rounded bg-slate-200 p-1 text-slate-700 hover:bg-slate-300 "
+                              className="rounded bg-slate-200 p-1 text-slate-700 hover:bg-slate-300 cursor-pointer"
                               title="Cancel"
                             >
                               <X className="h-3.5 w-3.5" />
@@ -181,14 +189,14 @@ export default function PayrollTable({ record, onRefresh }: PayrollTableProps) {
                           <>
                             <button
                               onClick={() => openModal(item.id)}
-                              className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-blue-600"
+                              className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-blue-600 cursor-pointer"
                               title="View/Edit Full Details"
                             >
                               <Edit3 className="h-3.5 w-3.5" />
                             </button>
                             <button
                               onClick={() => downloadPayrollPDF(item.workerId)}
-                              className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-emerald-600"
+                              className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-emerald-600 cursor-pointer"
                               title="Download Payroll PDF"
                             >
                               <Download className="h-3.5 w-3.5" />
@@ -203,6 +211,17 @@ export default function PayrollTable({ record, onRefresh }: PayrollTableProps) {
             )}
           </tbody>
         </table>
+
+        {record.items.length > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            pageSize={pageSize}
+            total={record.items.length}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+            itemLabel="workers"
+          />
+        )}
       </div>
 
       {/* Payroll Item Modal */}

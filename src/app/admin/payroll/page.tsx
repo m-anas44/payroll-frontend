@@ -9,6 +9,8 @@ import { getPayrollByMonth } from "@/handlers/payroll.handler";
 import { Calculator, Calendar, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
+import Heading from "@/components/common/Heading";
+
 export default function PayrollPage() {
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthStr());
   const [activeRecord, setActiveRecord] = useState<any>(null);
@@ -21,7 +23,6 @@ export default function PayrollPage() {
     setError(null);
     try {
       const data = await getPayrollByMonth(selectedMonth);
-      // Map API fields to UI component expectations if needed
       const mappedRecord = {
         id: data._id,
         month: data.monthString || selectedMonth,
@@ -75,29 +76,25 @@ export default function PayrollPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-            Monthly Piece-Rate Payroll Engine
-          </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Aggregate piece-rate production logs, apply allowances/deductions, and process monthly wage disbursement statements.
-          </p>
-        </div>
+      <Heading
+        title="Monthly Piece-Rate Payroll Engine"
+        subtitle="Aggregate piece-rate production logs, apply allowances/deductions, and process monthly wage disbursement statements."
+        icon={Calculator}
+        actions={
+          <div className="flex items-center gap-2">
+            <ExportButton type="payroll" month={selectedMonth} label="Export Payroll CSV" />
 
-        <div className="flex items-center gap-2">
-          <ExportButton type="payroll" month={selectedMonth} label="Export Payroll CSV" />
-
-          <button
-            onClick={handleRefresh}
-            disabled={isReconciling}
-            className="flex items-center gap-1.5 rounded-lg bg-purple-600 px-4 py-2 text-xs font-bold text-white hover:bg-purple-700 shadow-xs transition-colors disabled:opacity-50"
-          >
-            {isReconciling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-            <span>Reconcile Payroll</span>
-          </button>
-        </div>
-      </div>
+            <button
+              onClick={handleRefresh}
+              disabled={isReconciling}
+              className="flex items-center gap-1.5 rounded-lg bg-purple-600 px-4 py-2 text-xs font-bold text-white hover:bg-purple-700 shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
+            >
+              {isReconciling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+              <span>Reconcile Payroll</span>
+            </button>
+          </div>
+        }
+      />
 
       <div className="flex items-center gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
         <div className="flex items-center gap-2">

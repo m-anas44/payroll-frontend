@@ -13,8 +13,6 @@ import {
   LucideIcon,
   PlusCircle,
   History,
-  FileText,
-  User,
 } from "lucide-react";
 import { UserRole } from "@/types/user";
 
@@ -26,104 +24,88 @@ export interface NavItem {
   badge?: string;
 }
 
-export const WORKER_NAVIGATION_ITEMS: NavItem[] = [
-  {
-    title: "Dashboard",
-    href: "/worker",
-    icon: LayoutDashboard,
-    roles: ["Worker"],
-  },
+export const OPERATOR_NAVIGATION_ITEMS: NavItem[] = [
   {
     title: "Daily Production",
-    href: "/worker/production",
+    href: "/operator",
     icon: PlusCircle,
-    roles: ["Worker"],
+    roles: ["operator"],
   },
   {
-    title: "My Production History",
-    href: "/worker/history",
+    title: "Production History",
+    href: "/operator/history",
     icon: History,
-    roles: ["Worker"],
-  },
-  {
-    title: "Salary Statements",
-    href: "/worker/statements",
-    icon: FileText,
-    roles: ["Worker"],
-  },
-  {
-    title: "Profile",
-    href: "/worker/profile",
-    icon: User,
-    roles: ["Worker"],
+    roles: ["operator"],
   },
 ];
+
+export const WORKER_NAVIGATION_ITEMS = OPERATOR_NAVIGATION_ITEMS;
 
 export const NAVIGATION_ITEMS: NavItem[] = [
   {
     title: "Dashboard",
     href: "/admin/dashboard",
     icon: LayoutDashboard,
-    roles: ["Admin", "Worker"],
+    roles: ["admin", "operator"],
   },
   {
     title: "Workers",
     href: "/admin/workers",
     icon: Users,
-    roles: ["Admin", "Worker"],
+    roles: ["admin", "operator"],
   },
   {
     title: "Departments",
     href: "/admin/departments",
     icon: Building2,
-    roles: ["Admin", "Worker"],
+    roles: ["admin", "operator"],
   },
   {
     title: "Articles",
     href: "/admin/articles",
     icon: Package,
-    roles: ["Admin", "Worker"],
+    roles: ["admin", "operator"],
   },
   {
     title: "Operations",
     href: "/admin/operations",
     icon: Layers,
-    roles: ["Admin", "Worker"],
+    roles: ["admin", "operator"],
   },
   {
     title: "Piece Rates",
     href: "/admin/rates",
     icon: Coins,
-    roles: ["Admin"],
+    roles: ["admin"],
   },
   {
     title: "Production",
     href: "/admin/production",
     icon: ClipboardList,
-    roles: ["Admin", "Worker"],
+    roles: ["admin", "operator"],
   },
   {
     title: "Payroll",
     href: "/admin/payroll",
     icon: Calculator,
-    roles: ["Admin"],
+    roles: ["admin"],
   },
   {
     title: "Reports",
     href: "/admin/reports",
     icon: FileSpreadsheet,
-    roles: ["Admin", "Worker"],
+    roles: ["admin", "operator"],
   },
   {
-    title: "Users",
+    title: "operators",
     href: "/admin/users",
     icon: UserCog,
-    roles: ["Admin"],
+    roles: ["admin"],
   },
   {
     title: "Settings",
     href: "/admin/settings",
     icon: Settings,
-    roles: ["Admin"],
+    roles: ["admin"],
   },
 ];

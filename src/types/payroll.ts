@@ -44,3 +44,33 @@ export interface MonthlyPayrollRecord {
   items: WorkerPayrollSummary[];
   notes?: string;
 }
+
+export interface PayrollAdjustmentPayload {
+  payrollId?: string;
+  payrollItemId?: string;
+  workerId: string;
+  allowanceAmount?: number;
+  advanceAmount?: number;
+  eobiAmount?: number;
+  otherDeductions?: number;
+}
+
+export interface PayrollItemUpdatePayload {
+  payrollId?: string;
+  payrollItemId?: string;
+  workerId: string;
+  workingDays?: number;
+  sundayDays?: number;
+  otherEarnings?: number;
+  allowanceAmount?: number;
+  minimumWageAdjustment?: number;
+  advanceAmount?: number;
+  eobiAmount?: number;
+  otherDeductions?: number;
+}
+
+export interface PayrollStatusUpdatePayload {
+  payrollId?: string;
+  month?: string;
+  status: string;
+}

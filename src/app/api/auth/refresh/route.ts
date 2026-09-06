@@ -13,8 +13,13 @@ export async function POST(request: NextRequest) {
       refreshToken,
     });
 
+    const resEnvelope = response.data || {};
+    const resData = resEnvelope.data || resEnvelope;
+
     const newAccessToken =
-      response.data?.accessToken || response.data?.access_token;
+      resData?.accessToken ||
+      resData?.access_token ||
+      resEnvelope?.accessToken;
 
     if (!newAccessToken) {
       return NextResponse.json(
@@ -23,7 +28,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const res = NextResponse.json({ success: true }, { status: 200 });
+    const res = NextResponse.json({ success: true, token: newAccessToken }, { status: 200 });
 
     // Re-issue the access token cookie for 15 minutes
     res.cookies.set("__payrollAccessToken__", newAccessToken, {

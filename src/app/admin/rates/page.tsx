@@ -3,6 +3,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuthStore } from "@/store/auth.store";
 import RateModal from "@/components/master/RateModal";
+import Heading from "@/components/common/Heading";
+import Pagination from "@/components/common/Pagination";
+import ConfirmDeleteModal from "@/components/common/ConfirmDeleteModal";
 import { PieceRate } from "@/types/rate";
 import { formatCurrency } from "@/lib/currency";
 import { formatDate } from "@/lib/format-date";
@@ -21,10 +24,11 @@ import {
   Trash2,
   RefreshCw,
 } from "lucide-react";
+import { toast } from "sonner";
 
 export default function PieceRatesPage() {
   const { currentUser } = useAuthStore();
-  const isAdmin = currentUser?.role === "Admin";
+  const isAdmin = currentUser?.role === "admin";
 
   const [activeTab, setActiveTab] = useState<"Active" | "History">("Active");
   const [activeRates, setActiveRates] = useState<PieceRate[]>([]);
@@ -36,6 +40,12 @@ export default function PieceRatesPage() {
 
   const [rateToEdit, setRateToEdit] = useState<PieceRate | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const [rateToDelete, setRateToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // Load all required data upfront at root level
   const loadInitialData = useCallback(async () => {
@@ -62,7 +72,7 @@ export default function PieceRatesPage() {
       setOperations(opsRes.items || []);
     } catch {
       setErrorMsg("An error occurred while fetching system data.");
-    } finally {
+    } fontally: {
       setIsLoading(false);
     }
   }, []);
@@ -85,66 +95,78 @@ export default function PieceRatesPage() {
     });
   }, [rawHistoryRates]);
 
-  const handleDeleteRate = async (rateId: string) => {
-    if (!confirm("Are you sure you want to delete this rate record?")) return;
-
-    const res = await deleteRate(rateId);
-    if (res.success) {
-      await loadInitialData();
-    } else {
-      alert(res.message || "Failed to delete rate.");
+  const handleConfirmDeleteRate = async () => {
+    if (!rateToDelete) return;
+    try {
+      setIsDeleting(true);
+      const res = await deleteRate(rateToDelete);
+      if (res.success) {
+        toast.success("Rate record deleted successfully.");
+        setRateToDelete(null);
+        await loadInitialData();
+      } else {
+        toast.error(res.message || "Failed to delete rate.");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete rate.");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
   const displayedRates =
     activeTab === "Active" ? activeRates : filteredHistoryRates;
 
+  const paginatedRates = displayedRates.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-            Piece Rate Definitions
-          </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Define, revise, and track operation piece rate history.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={loadInitialData}
-            disabled={isLoading}
-            className="p-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition"
-            title="Refresh Data"
-          >
-            <RefreshCw
-              className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
-            />
-          </button>
-
-          {isAdmin && (
+      <Heading
+        title="Piece Rate Definitions"
+        subtitle="Define, revise, and track operation piece rate history."
+        icon={Coins}
+        actions={
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => {
-                setRateToEdit(null);
-                setIsModalOpen(true);
-              }}
+              onClick={loadInitialData}
               disabled={isLoading}
-              className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50 transition shadow-sm"
+              className="p-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition cursor-pointer"
+              title="Refresh Data"
             >
-              <Plus className="h-4 w-4" />
-              Define New Rate
+              <RefreshCw
+                className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+              />
             </button>
-          )}
-        </div>
-      </div>
+
+            {isAdmin && (
+              <button
+                onClick={() => {
+                  setRateToEdit(null);
+                  setIsModalOpen(true);
+                }}
+                disabled={isLoading}
+                className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50 transition shadow-xs cursor-pointer"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Define New Rate</span>
+              </button>
+            )}
+          </div>
+        }
+      />
 
       {/* Tabs */}
       <div className="flex border-b border-slate-200">
         <button
-          onClick={() => setActiveTab("Active")}
-          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition ${
+          onClick={() => {
+            setActiveTab("Active");
+            setCurrentPage(1);
+          }}
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition cursor-pointer ${
             activeTab === "Active"
               ? "border-emerald-600 text-emerald-600"
               : "border-transparent text-slate-500 hover:text-slate-800"
@@ -155,8 +177,11 @@ export default function PieceRatesPage() {
         </button>
 
         <button
-          onClick={() => setActiveTab("History")}
-          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition ${
+          onClick={() => {
+            setActiveTab("History");
+            setCurrentPage(1);
+          }}
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition cursor-pointer ${
             activeTab === "History"
               ? "border-emerald-600 text-emerald-600"
               : "border-transparent text-slate-500 hover:text-slate-800"
@@ -174,7 +199,7 @@ export default function PieceRatesPage() {
       )}
 
       {/* Rates Table */}
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-xs">
         <table className="w-full text-left text-xs">
           <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">
             <tr>
@@ -190,7 +215,7 @@ export default function PieceRatesPage() {
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-slate-100 font-medium">
             {isLoading ? (
               Array.from({ length: 5 }).map((_, idx) => (
                 <tr key={idx} className="animate-pulse">
@@ -229,7 +254,7 @@ export default function PieceRatesPage() {
                 </td>
               </tr>
             ) : (
-              displayedRates.map((rate) => {
+              paginatedRates.map((rate) => {
                 const operation = operations.find(
                   (item) => String(item._id) === String(rate.operationId)
                 );
@@ -244,7 +269,7 @@ export default function PieceRatesPage() {
                         <Layers className="h-4 w-4 text-slate-400 shrink-0" />
                         <span>
                           {operation
-                            ? `${operation.code} - ${operation.name}`
+                            ? `${operation.code || ""} - ${operation.name}`
                             : rate.operationId}
                         </span>
                       </div>
@@ -290,7 +315,7 @@ export default function PieceRatesPage() {
                                 setRateToEdit(rate);
                                 setIsModalOpen(true);
                               }}
-                              className="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition"
+                              className="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition cursor-pointer"
                             >
                               <Edit2 className="h-4 w-4" />
                             </button>
@@ -298,8 +323,8 @@ export default function PieceRatesPage() {
 
                           <button
                             title="Delete Rate"
-                            onClick={() => handleDeleteRate(rate._id)}
-                            className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                            onClick={() => setRateToDelete(rate._id)}
+                            className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
@@ -312,6 +337,17 @@ export default function PieceRatesPage() {
             )}
           </tbody>
         </table>
+
+        {displayedRates.length > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            pageSize={pageSize}
+            total={displayedRates.length}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+            itemLabel="rates"
+          />
+        )}
       </div>
 
       <RateModal
@@ -320,6 +356,14 @@ export default function PieceRatesPage() {
         rateToEdit={rateToEdit}
         operations={operations}
         onSuccess={loadInitialData}
+      />
+
+      <ConfirmDeleteModal
+        isOpen={Boolean(rateToDelete)}
+        itemName="this rate definition"
+        isLoading={isDeleting}
+        onClose={() => setRateToDelete(null)}
+        onConfirm={handleConfirmDeleteRate}
       />
     </div>
   );

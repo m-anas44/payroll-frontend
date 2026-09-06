@@ -23,7 +23,7 @@ export default function LoginPage() {
   useEffect(() => {
     if (isAuthenticated && currentUser) {
       const isRoleAdmin = currentUser.role?.toLowerCase() === "admin";
-      router.push(isRoleAdmin ? "/admin/dashboard" : "/worker");
+      router.push(isRoleAdmin ? "/admin/dashboard" : "/operator");
     }
   }, [isAuthenticated, currentUser, router]);
 
@@ -37,11 +37,11 @@ export default function LoginPage() {
       const res = await loginRequest({ email, password, role: payloadRole });
 
       // Store user data (including normalized role) in Zustand for UI components
-      useAuthStore.getState().login(res.user, res.token);
+      useAuthStore.getState().login(res.user, res.token || res.accessToken);
 
       // Redirect based on role
       const isRoleAdmin = res.user?.role?.toLowerCase() === "admin";
-      router.replace(isRoleAdmin ? "/admin/dashboard" : "/worker");
+      router.replace(isRoleAdmin ? "/admin/dashboard" : "/operator");
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -80,7 +80,7 @@ export default function LoginPage() {
               }`}
             >
               <Shield className="h-3.5 w-3.5" />
-              <span>admin Access</span>
+              <span>Admin Access</span>
             </button>
             <button
               type="button"
@@ -95,7 +95,7 @@ export default function LoginPage() {
               }`}
             >
               <User className="h-3.5 w-3.5" />
-              <span>Worker Portal</span>
+              <span>Operator Portal</span>
             </button>
           </div>
 
@@ -129,7 +129,7 @@ export default function LoginPage() {
                   placeholder={
                     activeTab === "admin"
                       ? "admin@piecerate.com"
-                      : "worker@piecerate.com"
+                      : "operator@piecerate.com"
                   }
                   className="block w-full pl-10 pr-3 py-2 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-xs text-slate-900"
                 />

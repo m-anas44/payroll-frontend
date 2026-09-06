@@ -31,3 +31,35 @@ export interface RateHistoryItem {
   updatedBy: string;
   createdAt: string;
 }
+
+export interface RateQueryParams {
+  departmentId?: string;
+  articleId?: string;
+  operationId?: string;
+  status?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface EffectiveRateParams {
+  departmentId: string;
+  articleId: string;
+  operationId: string;
+  date?: string;
+}
+
+export interface CreateRatePayload {
+  departmentId: string;
+  articleId: string;
+  operationId: string;
+  amount: number;
+  effectiveFrom?: string;
+  effectiveTo?: string;
+}
+
+export interface UpdateRatePayload {
+  amount?: number;
+  effectiveFrom?: string;
+  effectiveTo?: string;
+  status?: string;
+}

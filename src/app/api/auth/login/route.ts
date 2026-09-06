@@ -6,34 +6,48 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const response = await apiClient.post("/auth/login", body);
 
-    const resData = response.data;
-    const token = resData?.accessToken || resData?.access_token || resData?.token;
-    const refreshToken = resData?.refreshToken || resData?.refresh_token;
-    const user = resData?.user;
+    // FastAPI returns wrapped response in create_response envelope: { success, status_code, message, data: { accessToken, ... } }
+    const resEnvelope = response.data || {};
+    const resData = resEnvelope.data || resEnvelope;
+
+    const token =
+      resData?.accessToken ||
+      resData?.access_token ||
+      resData?.token ||
+      resEnvelope?.token;
+
+    const refreshToken =
+      resData?.refreshToken ||
+      resData?.refresh_token ||
+      resEnvelope?.refreshToken;
+
+    const user = resData?.user || resEnvelope?.user;
 
     const rawUserRole = user?.role ? String(user.role).toLowerCase() : "";
     const normalizedUserRole =
       rawUserRole === "operator"
-        ? "worker"
+        ? "operator"
         : rawUserRole === "admin"
         ? "admin"
         : rawUserRole;
 
-    const normalizedUser = user && typeof user === "object"
-      ? {
-          ...user,
-          role:
-            normalizedUserRole === "worker"
-              ? "Worker"
-              : normalizedUserRole === "admin"
-              ? "Admin"
-              : user.role,
-        }
-      : user;
+    const normalizedUser =
+      user && typeof user === "object"
+        ? {
+            ...user,
+            role:
+              normalizedUserRole === "operator"
+                ? "Operator"
+                : normalizedUserRole === "admin"
+                ? "Admin"
+                : user.role,
+          }
+        : user;
 
     const responseBody = {
-      ...resData,
+      ...resEnvelope,
       token,
+      accessToken: token,
       user: normalizedUser,
     };
 
@@ -82,4 +96,4 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ error: errorMessage }, { status });
   }
-}
+}

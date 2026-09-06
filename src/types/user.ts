@@ -1,11 +1,11 @@
-export type UserRole = "Admin" | "Worker";
+export type UserRole = "admin" | "operator";
 
 export interface User {
   id: string;
   name: string;
   email: string;
   role: UserRole;
-  departmentId?: string;
+  departmentIds?: string[];
   active: boolean;
   createdAt: string;
 }

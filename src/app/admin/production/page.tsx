@@ -30,6 +30,8 @@ const INITIAL_FILTERS = {
   limit: 20,
 };
 
+import Heading from "@/components/common/Heading";
+
 export default function ProductionPage() {
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
 
@@ -157,19 +159,20 @@ export default function ProductionPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Production Entry</h1>
-          <p className="text-sm text-slate-500">Record and manage daily piece-rate production for Askari Shoe.</p>
-        </div>
-        <button
-          onClick={() => setIsBatchModalOpen(true)}
-          className="flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-blue-700 transition-colors"
-        >
-          <Layers className="h-4 w-4" />
-          Batch Production
-        </button>
-      </div>
+      <Heading
+        title="Production Entry"
+        subtitle="Record and manage daily piece-rate production for Askari Shoe."
+        icon={Layers}
+        actions={
+          <button
+            onClick={() => setIsBatchModalOpen(true)}
+            className="flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
+          >
+            <Layers className="h-4 w-4" />
+            <span>Batch Production</span>
+          </button>
+        }
+      />
 
       <ProductionFilter
         filters={filters}

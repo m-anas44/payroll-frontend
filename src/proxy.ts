@@ -7,19 +7,22 @@ export function proxy(request: NextRequest) {
   // Read cookies set by login API route
   const token = request.cookies.get("__payrollAccessToken__")?.value;
   const rawUserRole = request.cookies.get("userRole")?.value || "";
-  const normalizedUserRole =
-    rawUserRole.toLowerCase() === "operator"
-      ? "worker"
-      : rawUserRole.toLowerCase();
+  const normalizedUserRole = rawUserRole.toLowerCase();
 
   const isAuthenticated = Boolean(token);
 
   const isRootRoute = pathname === "/";
   const isAuthRoute = pathname.startsWith("/login");
   const isAdminRoute = pathname.startsWith("/admin");
+  const isOperatorRoute = pathname.startsWith("/operator");
   const isWorkerRoute = pathname.startsWith("/worker");
 
-  const defaultDashboard = normalizedUserRole === "admin" ? "/admin/dashboard" : "/worker";
+  const defaultDashboard = normalizedUserRole === "admin" ? "/admin/dashboard" : "/operator";
+
+  // Redirect legacy /worker route to /operator
+  if (isWorkerRoute) {
+    return NextResponse.redirect(new URL("/operator", request.url));
+  }
 
   // 1. Handle "/" root route
   if (isRootRoute) {
@@ -30,17 +33,17 @@ export function proxy(request: NextRequest) {
   }
 
   // 2. Protect private routes if unauthenticated
-  if (!isAuthenticated && (isAdminRoute || isWorkerRoute)) {
+  if (!isAuthenticated && (isAdminRoute || isOperatorRoute)) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // 3. Prevent Workers from accessing Admin routes
+  // 3. Prevent Operators from accessing Admin routes
   if (isAuthenticated && isAdminRoute && normalizedUserRole !== "admin") {
-    return NextResponse.redirect(new URL("/worker", request.url));
+    return NextResponse.redirect(new URL("/operator", request.url));
   }
 
-  // 4. Prevent Admins from accessing Worker routes
-  if (isAuthenticated && isWorkerRoute && normalizedUserRole === "admin") {
+  // 4. Prevent Admins from accessing Operator routes
+  if (isAuthenticated && isOperatorRoute && normalizedUserRole === "admin") {
     return NextResponse.redirect(new URL("/admin/dashboard", request.url));
   }
 
@@ -53,5 +56,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/admin/:path*", "/worker/:path*", "/login"],
+  matcher: ["/", "/admin/:path*", "/operator/:path*", "/worker/:path*", "/login"],
 };

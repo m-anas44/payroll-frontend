@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { WORKER_NAVIGATION_ITEMS } from "@/data/navigation";
+import { OPERATOR_NAVIGATION_ITEMS } from "@/data/navigation";
 import { useAuthStore } from "@/store/auth.store";
 import { APP_NAME } from "@/lib/constants";
 import { cn } from "@/lib/cn";
@@ -37,12 +37,12 @@ export function WorkerSidebar({ mobileOpen, setMobileOpen }: WorkerSidebarProps)
           {/* Mobile Header Inside Drawer */}
           <div className="flex items-center justify-between lg:hidden border-b border-slate-100 pb-3">
             <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600 text-white font-black text-sm">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white font-black text-sm">
                 <Factory className="h-4 w-4" />
               </div>
               <div>
                 <span className="font-bold text-slate-900 text-sm block leading-none">{APP_NAME}</span>
-                <span className="text-[10px] font-semibold text-emerald-600 uppercase">Worker Portal</span>
+                <span className="text-[10px] font-semibold text-blue-600 uppercase">Operator Portal</span>
               </div>
             </div>
             <button
@@ -55,14 +55,14 @@ export function WorkerSidebar({ mobileOpen, setMobileOpen }: WorkerSidebarProps)
 
           {/* Quick Profile Summary Badge */}
           <div className="rounded-xl bg-slate-50 border border-slate-200/80 p-3 flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-800 font-bold text-sm">
-              {currentUser?.name?.charAt(0) || "W"}
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-800 font-bold text-sm">
+              {currentUser?.name?.charAt(0) || "O"}
             </div>
             <div className="overflow-hidden">
-              <p className="text-xs font-bold text-slate-900 truncate">{currentUser?.name || "Worker User"}</p>
-              <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-700">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Active Worker
+              <p className="text-xs font-bold text-slate-900 truncate">{currentUser?.name || "Operator User"}</p>
+              <span className="inline-flex items-center gap-1 text-[10px] font-medium text-blue-700">
+                <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
+                Active Operator
               </span>
             </div>
           </div>
@@ -70,14 +70,13 @@ export function WorkerSidebar({ mobileOpen, setMobileOpen }: WorkerSidebarProps)
           {/* Navigation Links */}
           <nav className="space-y-1">
             <p className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-              Worker Menu
+              Operator Menu
             </p>
-            {WORKER_NAVIGATION_ITEMS.map((item) => {
+            {OPERATOR_NAVIGATION_ITEMS.map((item) => {
               const Icon = item.icon;
-              // Check exact match for /worker, or startsWith for subroutes
               const isActive =
-                item.href === "/worker"
-                  ? pathname === "/worker"
+                item.href === "/operator"
+                  ? pathname === "/operator"
                   : pathname.startsWith(item.href);
 
               return (
@@ -88,7 +87,7 @@ export function WorkerSidebar({ mobileOpen, setMobileOpen }: WorkerSidebarProps)
                   className={cn(
                     "flex items-center gap-3 rounded-lg px-3 py-2.5 text-xs font-semibold transition-all",
                     isActive
-                      ? "bg-emerald-600 text-white shadow-xs"
+                      ? "bg-blue-600 text-white shadow-xs"
                       : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                   )}
                 >

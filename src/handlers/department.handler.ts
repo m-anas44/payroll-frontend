@@ -1,4 +1,5 @@
 import { browserClient as axios } from "@/lib/browserClient";
+import { handleApiError } from "@/lib/errorHandler";
 import { Department } from "@/types/department";
 
 const normalizeDepartment = (item: any): Department => ({
@@ -14,19 +15,16 @@ const normalizeDepartment = (item: any): Department => ({
 export async function getDepartments(): Promise<Department[]> {
   try {
     const response = await axios.get("/api/admin/departments");
-    const items = Array.isArray(response.data?.items)
-      ? response.data.items
-      : Array.isArray(response.data)
-        ? response.data
-        : [];
+    const resData = response.data?.data ?? response.data;
+    const items = Array.isArray(resData?.items)
+      ? resData.items
+      : Array.isArray(resData)
+      ? resData
+      : [];
 
     return items.map(normalizeDepartment);
-  } catch (error: any) {
-    const message =
-      error.response?.data?.error ||
-      error.response?.data?.detail ||
-      "Unable to load departments.";
-    throw new Error(message);
+  } catch (error) {
+    return handleApiError(error, "Unable to load departments.");
   }
 }
 
@@ -44,13 +42,9 @@ export async function createDepartment(data: Omit<Department, "id" | "createdAt"
 
   try {
     const response = await axios.post("/api/admin/departments", payload);
-    return response.data;
-  } catch (error: any) {
-    const message =
-      error.response?.data?.error ||
-      error.response?.data?.detail ||
-      "Unable to create department.";
-    throw new Error(message);
+    return response.data?.data ?? response.data;
+  } catch (error) {
+    return handleApiError(error, "Unable to create department.");
   }
 }
 
@@ -64,25 +58,17 @@ export async function updateDepartment(id: string, updates: Partial<Department>)
     };
 
     const response = await axios.put(`/api/admin/departments/${id}`, payload);
-    return response.data;
-  } catch (error: any) {
-    const message =
-      error.response?.data?.error ||
-      error.response?.data?.detail ||
-      "Unable to update department.";
-    throw new Error(message);
+    return response.data?.data ?? response.data;
+  } catch (error) {
+    return handleApiError(error, "Unable to update department.");
   }
 }
 
 export async function deleteDepartment(id: string) {
   try {
     const response = await axios.delete(`/api/admin/departments/${id}`);
-    return response.data;
-  } catch (error: any) {
-    const message =
-      error.response?.data?.error ||
-      error.response?.data?.detail ||
-      "Unable to delete department.";
-    throw new Error(message);
+    return response.data?.data ?? response.data;
+  } catch (error) {
+    return handleApiError(error, "Unable to delete department.");
   }
 }

@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { Save, ShieldAlert, CheckCircle2, Factory } from "lucide-react";
+import Heading from "@/components/common/Heading";
+import { Settings, Save, ShieldAlert, CheckCircle2, Factory } from "lucide-react";
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState({
@@ -24,14 +25,11 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6 max-w-4xl">
-      <div>
-        <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-          System Configuration & Business Rules
-        </h1>
-        <p className="text-xs text-slate-500 mt-1">
-          Configure application parameters, CNIC validation rules, piece-rate preservation, and factory defaults.
-        </p>
-      </div>
+      <Heading
+        title="System Configuration & Business Rules"
+        subtitle="Configure application parameters, CNIC validation rules, piece-rate preservation, and factory defaults."
+        icon={Settings}
+      />
 
       <form onSubmit={handleSave} className="space-y-6">
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs space-y-4">

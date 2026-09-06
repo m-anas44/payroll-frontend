@@ -14,6 +14,8 @@ import { formatCurrency, formatQuantity } from "@/lib/currency";
 import { getCurrentMonthStr } from "@/lib/format-date";
 import { Users, Layers, Coins, Building2, TrendingUp, ShieldCheck } from "lucide-react";
 
+import Heading from "@/components/common/Heading";
+
 export default function DashboardPage() {
   const { workers } = useWorkerStore();
   const { entries } = useProductionStore();
@@ -23,39 +25,32 @@ export default function DashboardPage() {
   const [isProdModalOpen, setIsProdModalOpen] = useState(false);
   const [isPayrollModalOpen, setIsPayrollModalOpen] = useState(false);
 
-  const activeWorkersCount = workers.filter((w) => w.status === "Active").length;
+  const activeWorkersCount = workers.filter((w) => w.status === "active").length;
 
   const currentMonthStr = getCurrentMonthStr();
-  const currentMonthEntries = entries.filter((e) => e.date.startsWith(currentMonthStr));
+  const currentMonthEntries = entries.filter((e) => e.date?.startsWith(currentMonthStr));
 
   const totalMonthlyPieces = currentMonthEntries.reduce((sum, e) => sum + e.quantity, 0);
-  const totalMonthlyPayout = currentMonthEntries.reduce((sum, e) => sum + e.totalPayment, 0);
+  const totalMonthlyPayout = currentMonthEntries.reduce((sum, e) => sum + (e.totalPayment || 0), 0);
 
-  const activeRates = rates.filter((r) => r.status === "Active");
+  const activeRates = rates.filter((r) => r.status === "active");
   const avgRate =
     activeRates.length > 0
-      ? activeRates.reduce((s, r) => s + r.ratePerPiece, 0) / activeRates.length
+      ? activeRates.reduce((s, r) => s + r.amount, 0) / activeRates.length
       : 0;
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-            Piece-Rate Payroll Command Center
-          </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Real-time monitoring of worker output, piece rates, daily logs, and monthly wage disbursements.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-            <ShieldCheck className="h-4 w-4" />
-            Rates Locked & Validated
+      <Heading
+        title="Piece-Rate Payroll Command Center"
+        subtitle="Real-time monitoring of worker output, piece rates, daily logs, and monthly wage disbursements."
+        badge={
+          <span className="flex items-center gap-1">
+            <ShieldCheck className="h-3.5 w-3.5" />
+            <span>Rates Locked & Validated</span>
           </span>
-        </div>
-      </div>
+        }
+      />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
@@ -107,14 +102,14 @@ export default function DashboardPage() {
             </h3>
             <div className="space-y-3">
               {departments.map((dept) => {
-                const deptWorkers = workers.filter((w) => w.departmentId === dept.id).length;
-                const deptEntries = currentMonthEntries.filter((e) => e.departmentId === dept.id);
+                const deptWorkers = workers.filter((w) => w.departmentId === dept._id).length;
+                const deptEntries = currentMonthEntries.filter((e) => e.departmentId === dept._id);
                 const deptPieces = deptEntries.reduce((s, e) => s + e.quantity, 0);
 
                 const percent = totalMonthlyPieces > 0 ? (deptPieces / totalMonthlyPieces) * 100 : 0;
 
                 return (
-                  <div key={dept.id} className="space-y-1">
+                  <div key={dept._id} className="space-y-1">
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-bold text-slate-800">
                         {dept.name}
@@ -136,19 +131,6 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
-
-      <WorkerModal
-        isOpen={isWorkerModalOpen}
-        onClose={() => setIsWorkerModalOpen(false)}
-      />
-      <ProductionModal
-        isOpen={isProdModalOpen}
-        onClose={() => setIsProdModalOpen(false)}
-      />
-      <GeneratePayrollModal
-        isOpen={isPayrollModalOpen}
-        onClose={() => setIsPayrollModalOpen(false)}
-      />
     </div>
   );
 }
