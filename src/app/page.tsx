@@ -11,8 +11,8 @@ export default function Home() {
   useEffect(() => {
     if (!isAuthenticated) {
       router.push("/login");
-    } else if (currentUser?.role === "Worker") {
-      router.push("/worker");
+    } else if (currentUser?.role === "operator") {
+      router.push("/operator");
     } else {
       router.push("/admin/dashboard");
     }

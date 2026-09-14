@@ -7,6 +7,7 @@ import { getCurrentMonthStr } from "@/lib/format-date";
 import { UserCheck, Download, Loader2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import Pagination from "@/components/common/Pagination";
+import { ReportTableSkeleton } from "@/skeletons";
 
 interface LabourWiseRow {
   workerCode: string;
@@ -120,9 +121,7 @@ export default function LabourWiseReport() {
       )}
 
       {isLoading ? (
-        <div className="flex h-64 items-center justify-center rounded-xl border border-slate-200 bg-white">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-        </div>
+        <ReportTableSkeleton columns={7} rows={6} />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-xs">
           <table className="w-full text-left text-xs">

@@ -15,6 +15,7 @@ import {
   deleteRate,
 } from "@/handlers/rate.handler";
 import { getOperations } from "@/handlers/operation.handler";
+import { TableRowSkeleton } from "@/skeletons";
 import {
   Coins,
   Plus,
@@ -128,7 +129,6 @@ export default function PieceRatesPage() {
       <Heading
         title="Piece Rate Definitions"
         subtitle="Define, revise, and track operation piece rate history."
-        icon={Coins}
         actions={
           <div className="flex items-center gap-2">
             <button
@@ -204,7 +204,6 @@ export default function PieceRatesPage() {
           <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">
             <tr>
               <th className="px-4 py-3">Operation</th>
-              <th className="px-4 py-3">Article</th>
               <th className="px-4 py-3 text-right">Rate / Piece</th>
               <th className="px-4 py-3">Effective From</th>
               {activeTab === "History" && (
@@ -217,33 +216,7 @@ export default function PieceRatesPage() {
 
           <tbody className="divide-y divide-slate-100 font-medium">
             {isLoading ? (
-              Array.from({ length: 5 }).map((_, idx) => (
-                <tr key={idx} className="animate-pulse">
-                  <td className="px-4 py-3.5">
-                    <div className="h-4 w-36 rounded bg-slate-200"></div>
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <div className="h-4 w-20 rounded bg-slate-200"></div>
-                  </td>
-                  <td className="px-4 py-3.5 text-right">
-                    <div className="ml-auto h-4 w-16 rounded bg-slate-200"></div>
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <div className="h-4 w-24 rounded bg-slate-200"></div>
-                  </td>
-                  {activeTab === "History" && (
-                    <td className="px-4 py-3.5">
-                      <div className="h-4 w-24 rounded bg-slate-200"></div>
-                    </td>
-                  )}
-                  <td className="px-4 py-3.5">
-                    <div className="h-4 w-16 rounded-full bg-slate-200"></div>
-                  </td>
-                  <td className="px-4 py-3.5 text-right">
-                    <div className="ml-auto h-4 w-12 rounded bg-slate-200"></div>
-                  </td>
-                </tr>
-              ))
+              <TableRowSkeleton columns={activeTab === "History" ? 7 : 6} rows={6} />
             ) : displayedRates.length === 0 ? (
               <tr>
                 <td
@@ -273,10 +246,6 @@ export default function PieceRatesPage() {
                             : rate.operationId}
                         </span>
                       </div>
-                    </td>
-
-                    <td className="px-4 py-3.5 text-slate-600 font-mono text-[11px]">
-                      {rate.articleNumber || "—"}
                     </td>
 
                     <td className="px-4 py-3.5 text-right font-bold text-emerald-600 text-sm">

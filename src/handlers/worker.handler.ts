@@ -1,5 +1,5 @@
 import { browserClient as axios } from "@/lib/browserClient";
-import { Worker, PoliceVerificationStatus, WorkerGender, WorkerStatus } from "@/types/worker";
+import { Worker, PoliceVerificationStatus, WorkerGender, WorkerStatus, WorkerBatchResponse, WorkerBatchItem, ImportWorkersResponse, WorkerExportPdfResponse } from "@/types/worker";
 import { isValidCNIC } from "@/lib/validators";
 
 const normalizePoliceVerification = (value?: string): PoliceVerificationStatus => {
@@ -154,6 +154,73 @@ export async function deleteWorker(id: string) {
       error.response?.data?.error ||
       error.response?.data?.detail ||
       "Unable to delete worker.";
+    throw new Error(message);
+  }
+}
+
+export async function createWorkersBatch(
+  workers: WorkerBatchItem[]
+): Promise<WorkerBatchResponse> {
+  try {
+    const response = await axios.post("/api/admin/workers/batch", { workers });
+    return response.data?.data || response.data;
+  } catch (error: any) {
+    const message =
+      error.response?.data?.message ||
+      error.response?.data?.error ||
+      error.response?.data?.detail ||
+      "Unable to import workers.";
+    throw new Error(message);
+  }
+}
+
+export async function uploadWorkersExcel(
+  formData: FormData
+): Promise<ImportWorkersResponse> {
+  const response = await axios.post("/api/workers/upload", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+
+  return response.data?.data || response.data;
+}
+
+export async function exportWorkersPdf(params?: {
+  status?: string;
+  departmentId?: string;
+  policeVerification?: string;
+  search?: string;
+}): Promise<WorkerExportPdfResponse> {
+  try {
+    const response = await axios.get("/api/admin/workers/export/pdf", { params });
+    const payload = response.data?.data || response.data;
+
+    if (payload?.fileBase64 && typeof window !== "undefined") {
+      const byteCharacters = atob(payload.fileBase64);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: payload.contentType || "application/pdf" });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", payload.filename || "workers_directory.pdf");
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    }
+
+    return payload;
+  } catch (error: any) {
+    const message =
+      error.response?.data?.message ||
+      error.response?.data?.error ||
+      error.response?.data?.detail ||
+      "Unable to export workers PDF.";
     throw new Error(message);
   }
 }

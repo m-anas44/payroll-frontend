@@ -74,7 +74,6 @@ export default function DepartmentsPage() {
       <Heading
         title="Department Management"
         subtitle="Configure factory operational units (Cutting, Stitching, Lasting, Packing, Quality Control)."
-        icon={Building2}
         actions={
           isAdmin ? (
             <button

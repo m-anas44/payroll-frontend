@@ -5,11 +5,12 @@ import { getCurrentMonthStr, formatMonthYear } from "@/lib/format-date";
 import PayrollSummary from "@/components/payroll/PayrollSummary";
 import PayrollTable from "@/components/payroll/PayrollTable";
 import ExportButton from "@/components/excel/ExportButton";
-import { getPayrollByMonth } from "@/handlers/payroll.handler";
-import { Calculator, Calendar, Loader2, AlertCircle, RefreshCw } from "lucide-react";
+import { getPayrollByMonth, reconcilePayroll } from "@/handlers/payroll.handler";
+import { Calculator, Calendar, Loader2, AlertCircle, RefreshCw, Lock } from "lucide-react";
 import { toast } from "sonner";
 
 import Heading from "@/components/common/Heading";
+import { PayrollSkeleton } from "@/skeletons";
 
 export default function PayrollPage() {
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthStr());
@@ -23,29 +24,46 @@ export default function PayrollPage() {
     setError(null);
     try {
       const data = await getPayrollByMonth(selectedMonth);
+      const isLocked = data.status === "approved" || data.status === "paid";
+
       const mappedRecord = {
-        id: data._id,
+        id: data._id || data.id,
         month: data.monthString || selectedMonth,
         status: data.status,
-        totalWorkers: data.totalWorkers,
+        isLocked,
+        totalWorkers: data.totalWorkers || 0,
         totalQuantity: data.totalProductionQuantity || 0,
         totalGrossEarnings: data.totalGrossAmount || data.totalProduction || 0,
+        totalDeductions: data.totalDeduction || 0,
         totalNetPayable: data.totalNetAmount || 0,
         items: (data.items || []).map((item: any) => ({
+          id: item._id || item.id, // Fixed: preserve ID for edit modal
+          payrollId: item.payrollId || data._id || data.id,
           workerId: item.workerId,
           workerCode: item.workerCode || item.cnic || "W-000",
           workerName: item.workerName || "Worker",
           cnic: item.cnic || "-",
+          departmentId: item.departmentId,
           departmentName: item.departmentName || "-",
-          totalQuantity: item.productionQuantity || 0,
-          grossEarnings: item.grossAmount || item.productionAmount || 0,
-          productionAmount: item.productionAmount || 0,
-          allowanceAmount: item.allowanceAmount || 0,
-          advanceAmount: item.advanceAmount || 0,
-          eobiAmount: item.eobiAmount || 0,
-          otherDeductions: item.otherDeductions || 0,
-          deductions: item.deductionAmount || 0,
-          netPayable: item.netAmount || 0,
+          workingDays: Number(item.workingDays || 0),
+          sundayDays: Number(item.sundayDays || 0),
+          totalDays: Number(item.totalDays || 0),
+          totalQuantity: Number(item.productionQuantity || 0),
+          productionAmount: Number(item.productionAmount || 0),
+          otherEarnings: Number(item.otherEarnings || 0),
+          allowanceAmount: Number(item.allowanceAmount || 0),
+          minimumWageAdjustment: Number(item.minimumWageAdjustment || 0),
+          bonuses:
+            Number(item.allowanceAmount || 0) +
+            Number(item.otherEarnings || 0) +
+            Number(item.minimumWageAdjustment || 0),
+          grossEarnings: Number(item.grossAmount || item.productionAmount || 0),
+          advanceAmount: Number(item.advanceAmount || 0),
+          eobiAmount: Number(item.eobiAmount || 0),
+          otherDeductions: Number(item.otherDeductions || 0),
+          deductions: Number(item.deductionAmount || 0),
+          netPayable: Number(item.netAmount || 0),
+          status: item.status,
         })),
       };
       setActiveRecord(mappedRecord);
@@ -65,10 +83,11 @@ export default function PayrollPage() {
   const handleRefresh = async () => {
     setIsReconciling(true);
     try {
+      await reconcilePayroll(selectedMonth);
       await fetchPayrollData();
       toast.success("Payroll reconciled successfully!");
-    } catch (err) {
-      toast.error("Failed to reconcile payroll.");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || err?.response?.data?.error || "Failed to reconcile payroll.");
     } finally {
       setIsReconciling(false);
     }
@@ -79,36 +98,44 @@ export default function PayrollPage() {
       <Heading
         title="Monthly Piece-Rate Payroll Engine"
         subtitle="Aggregate piece-rate production logs, apply allowances/deductions, and process monthly wage disbursement statements."
-        icon={Calculator}
         actions={
           <div className="flex items-center gap-2">
             <ExportButton type="payroll" month={selectedMonth} label="Export Payroll CSV" />
 
             <button
               onClick={handleRefresh}
-              disabled={isReconciling}
+              disabled={isReconciling || activeRecord?.isLocked}
               className="flex items-center gap-1.5 rounded-lg bg-purple-600 px-4 py-2 text-xs font-bold text-white hover:bg-purple-700 shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
             >
-              {isReconciling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+              {isReconciling ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3.5 w-3.5" />
+              )}
               <span>Reconcile Payroll</span>
             </button>
           </div>
         }
       />
 
-      <div className="flex items-center gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+      <div className="flex items-center justify-between bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
         <div className="flex items-center gap-2">
           <Calendar className="h-4 w-4 text-purple-600" />
-          <span className="text-xs font-bold text-slate-700">
-            Selected Month:
-          </span>
+          <span className="text-xs font-bold text-slate-700">Selected Month:</span>
           <input
             type="month"
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
-            className="text-xs font-bold border border-slate-300 rounded-lg px-2.5 py-1.5 bg-slate-50 text-slate-900 focus:outline-none"
+            className="text-xs font-bold border border-slate-300 rounded-lg px-2.5 py-1.5 bg-slate-50 text-slate-900 focus:outline-none focus:ring-1 focus:ring-purple-500"
           />
         </div>
+
+        {activeRecord?.isLocked && (
+          <div className="flex items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-700 border border-amber-200">
+            <Lock className="h-3.5 w-3.5" />
+            <span>Payroll Locked ({activeRecord.status.toUpperCase()})</span>
+          </div>
+        )}
       </div>
 
       {error && (
@@ -119,9 +146,7 @@ export default function PayrollPage() {
       )}
 
       {isLoading ? (
-        <div className="flex h-64 items-center justify-center rounded-xl border border-slate-200 bg-white">
-          <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
-        </div>
+        <PayrollSkeleton />
       ) : activeRecord ? (
         <div className="space-y-6">
           <PayrollSummary record={activeRecord} />
@@ -141,4 +166,3 @@ export default function PayrollPage() {
     </div>
   );
 }
-

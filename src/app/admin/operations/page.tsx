@@ -19,6 +19,7 @@ import {
   Building2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { TableRowSkeleton } from "@/skeletons";
 
 export default function OperationsPage() {
   const { currentUser } = useAuthStore();
@@ -141,7 +142,6 @@ export default function OperationsPage() {
       <Heading
         title="Operation Registry"
         subtitle="Map operations to departments."
-        icon={Layers}
         actions={
           isAdmin ? (
             <button
@@ -203,11 +203,7 @@ export default function OperationsPage() {
           </thead>
           <tbody className="divide-y divide-slate-100 font-medium">
             {isLoading ? (
-              <tr>
-                <td colSpan={3} className="px-4 py-8 text-center text-slate-400 font-medium">
-                  Loading operations...
-                </td>
-              </tr>
+              <TableRowSkeleton columns={3} rows={6} />
             ) : operations.length === 0 ? (
               <tr>
                 <td colSpan={3} className="px-4 py-8 text-center text-slate-400 font-medium">

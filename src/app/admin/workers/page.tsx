@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import WorkerFilter from "@/components/worker/WorkerFilter";
 import WorkerTable from "@/components/worker/WorkerTable";
 import WorkerModal from "@/components/worker/WorkerModal";
-import ImportModal from "@/components/excel/ImportModal";
+import WorkerImportModal from "@/components/worker/WorkerImportModal";
 import ExportButton from "@/components/excel/ExportButton";
 import ConfirmDeleteModal from "@/components/common/ConfirmDeleteModal";
 import { useAuthStore } from "@/store/auth.store";
@@ -138,7 +138,6 @@ export default function WorkersPage() {
       <Heading
         title="Worker Registration & CNIC Directory"
         subtitle="Maintain unique worker codes, verified CNICs, assigned departments, and police verification statuses."
-        icon={Users2}
         actions={
           <div className="flex items-center gap-2">
             <ExportButton type="workers" label="Export" />
@@ -203,9 +202,11 @@ export default function WorkersPage() {
         }}
       />
 
-      <ImportModal
+      <WorkerImportModal
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
+        onSuccess={() => loadWorkers(page, submittedSearch)}
+        departments={departments}
       />
 
       <ConfirmDeleteModal
@@ -215,6 +216,7 @@ export default function WorkersPage() {
         onClose={() => setWorkerToDelete(null)}
         onConfirm={handleConfirmDelete}
       />
+
     </div>
   );
 }

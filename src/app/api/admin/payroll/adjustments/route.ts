@@ -10,7 +10,7 @@ function getAuthHeaders(request: NextRequest) {
   };
 }
 
-export async function PUT(request: NextRequest) {
+async function handleAdjustment(request: NextRequest) {
   const headers = getAuthHeaders(request);
 
   if (!headers) {
@@ -19,7 +19,7 @@ export async function PUT(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const response = await apiClient.put("/admin/payroll/adjustments", body, { headers });
+    const response = await apiClient.patch("/admin/payroll/adjustments", body, { headers });
     return NextResponse.json(response.data, { status: 200 });
   } catch (error: any) {
     const status = error.response?.status || 500;
@@ -31,3 +31,6 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: message }, { status });
   }
 }
+
+export const PUT = handleAdjustment;
+export const PATCH = handleAdjustment;

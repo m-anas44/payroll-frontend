@@ -63,6 +63,8 @@ export default function QuickActions({
     },
   ];
 
+  const userRole = (currentUser?.role || "").toLowerCase();
+
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
       <h2 className="text-sm font-bold text-slate-900 mb-3">
@@ -70,7 +72,13 @@ export default function QuickActions({
       </h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {actions
-          .filter((a) => a.roles.includes(currentUser.role))
+          .filter((a) =>
+            a.roles.some(
+              (r) =>
+                r.toLowerCase() === userRole ||
+                (r.toLowerCase() === "worker" && userRole === "operator")
+            )
+          )
           .map((action) => {
             const Icon = action.icon;
             const content = (

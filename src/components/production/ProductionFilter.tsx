@@ -34,7 +34,6 @@ export default function ProductionFilter({
   articles,
   operations,
 }: ProductionFilterProps) {
-  console.log("worjers i am : ", workers)
   const workerOptions: SelectOption[] = [
     { label: "All Workers", value: "ALL" },
     ...workers.map((worker) => ({

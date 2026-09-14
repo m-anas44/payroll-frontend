@@ -4,51 +4,46 @@ import type { NextRequest } from "next/server";
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Read cookies set by login API route
-  const token = request.cookies.get("__payrollAccessToken__")?.value;
+  const accessToken = request.cookies.get("__payrollAccessToken__")?.value;
   const rawUserRole = request.cookies.get("userRole")?.value || "";
   const normalizedUserRole = rawUserRole.toLowerCase();
 
-  const isAuthenticated = Boolean(token);
+  // Active session exists if access token is valid OR the 7-day session role cookie is present
+  const hasActiveSession = Boolean(accessToken || rawUserRole);
 
   const isRootRoute = pathname === "/";
   const isAuthRoute = pathname.startsWith("/login");
   const isAdminRoute = pathname.startsWith("/admin");
   const isOperatorRoute = pathname.startsWith("/operator");
-  const isWorkerRoute = pathname.startsWith("/worker");
 
-  const defaultDashboard = normalizedUserRole === "admin" ? "/admin/dashboard" : "/operator";
+  const defaultDashboard =
+    normalizedUserRole === "admin" ? "/admin/dashboard" : "/operator";
 
-  // Redirect legacy /worker route to /operator
-  if (isWorkerRoute) {
-    return NextResponse.redirect(new URL("/operator", request.url));
-  }
-
-  // 1. Handle "/" root route
+  // 1. Root route handling
   if (isRootRoute) {
-    if (!isAuthenticated) {
+    if (!hasActiveSession) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
     return NextResponse.redirect(new URL(defaultDashboard, request.url));
   }
 
-  // 2. Protect private routes if unauthenticated
-  if (!isAuthenticated && (isAdminRoute || isOperatorRoute)) {
+  // 2. Protect private routes when no session exists
+  if (!hasActiveSession && (isAdminRoute || isOperatorRoute)) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // 3. Prevent Operators from accessing Admin routes
-  if (isAuthenticated && isAdminRoute && normalizedUserRole !== "admin") {
-    return NextResponse.redirect(new URL("/operator", request.url));
+  // 3. Role boundary enforcement
+  if (hasActiveSession && normalizedUserRole) {
+    if (isAdminRoute && normalizedUserRole !== "admin") {
+      return NextResponse.redirect(new URL("/operator", request.url));
+    }
+    if (isOperatorRoute && normalizedUserRole === "admin") {
+      return NextResponse.redirect(new URL("/admin/dashboard", request.url));
+    }
   }
 
-  // 4. Prevent Admins from accessing Operator routes
-  if (isAuthenticated && isOperatorRoute && normalizedUserRole === "admin") {
-    return NextResponse.redirect(new URL("/admin/dashboard", request.url));
-  }
-
-  // 5. Redirect logged-in users away from /login
-  if (isAuthenticated && isAuthRoute) {
+  // 4. Redirect authenticated users away from /login
+  if (hasActiveSession && isAuthRoute) {
     return NextResponse.redirect(new URL(defaultDashboard, request.url));
   }
 
@@ -56,5 +51,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/admin/:path*", "/operator/:path*", "/worker/:path*", "/login"],
+  matcher: ["/", "/admin/:path*", "/operator/:path*", "/login"],
 };

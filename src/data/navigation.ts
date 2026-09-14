@@ -37,6 +37,12 @@ export const OPERATOR_NAVIGATION_ITEMS: NavItem[] = [
     icon: History,
     roles: ["operator"],
   },
+  {
+    title: "Settings",
+    href: "/operator/settings",
+    icon: Settings,
+    roles: ["operator"],
+  },
 ];
 
 export const WORKER_NAVIGATION_ITEMS = OPERATOR_NAVIGATION_ITEMS;
@@ -97,8 +103,8 @@ export const NAVIGATION_ITEMS: NavItem[] = [
     roles: ["admin", "operator"],
   },
   {
-    title: "operators",
-    href: "/admin/users",
+    title: "Operators",
+    href: "/admin/operators",
     icon: UserCog,
     roles: ["admin"],
   },

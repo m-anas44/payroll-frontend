@@ -4,9 +4,8 @@ import { User } from "@/types/user";
 
 interface AuthState {
   currentUser: User | null;
-  token: string | null;
   isAuthenticated: boolean;
-  login: (user: User, token?: string) => void;
+  login: (user: User) => void;
   logout: () => void;
 }
 
@@ -14,13 +13,11 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       currentUser: null,
-      token: null,
       isAuthenticated: false,
 
-      login: (user: User, token?: string) => {
+      login: (user: User) => {
         set({
           currentUser: user,
-          token: token || null,
           isAuthenticated: true,
         });
       },
@@ -28,7 +25,6 @@ export const useAuthStore = create<AuthState>()(
       logout: () => {
         set({
           currentUser: null,
-          token: null,
           isAuthenticated: false,
         });
       },

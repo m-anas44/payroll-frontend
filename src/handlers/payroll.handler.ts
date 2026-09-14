@@ -1,7 +1,6 @@
 import { browserClient as axios } from "@/lib/browserClient";
 import { handleApiError } from "@/lib/errorHandler";
 import {
-  PayrollAdjustmentPayload,
   PayrollItemUpdatePayload,
   PayrollStatusUpdatePayload,
 } from "@/types/payroll";
@@ -15,6 +14,15 @@ export const getPayrolls = async (params?: Record<string, any>) => {
   }
 };
 
+export const getPayrollItemById = async (id: string) => {
+  try {
+    const response = await axios.get(`/api/admin/payroll/items/${id}`);
+    return response.data?.data ?? response.data;
+  } catch (error) {
+    return handleApiError(error, "Failed to fetch payroll details.");
+  }
+};
+
 export const getPayrollByMonth = async (month: string) => {
   try {
     const response = await axios.get(`/api/admin/payroll/${month}`);
@@ -24,23 +32,29 @@ export const getPayrollByMonth = async (month: string) => {
   }
 };
 
-export const updatePayrollAdjustment = async (payload: PayrollAdjustmentPayload) => {
+export const reconcilePayroll = async (month: string) => {
   try {
-    const response = await axios.put("/api/admin/payroll/adjustments", payload);
+    const response = await axios.post(`/api/admin/payroll/reconcile?month=${encodeURIComponent(month)}`);
+    return response.data?.data ?? response.data;
+  } catch (error) {
+    return handleApiError(error, `Failed to reconcile payroll for ${month}.`);
+  }
+};
+
+export const updatePayrollAdjustment = async (payload: any) => {
+  try {
+    const formattedPayload = {
+      ...payload,
+      itemId: payload.itemId || payload.payrollItemId || payload.id,
+    };
+    const response = await axios.patch("/api/admin/payroll/adjustments", formattedPayload);
     return response.data?.data ?? response.data;
   } catch (error) {
     return handleApiError(error, "Failed to update payroll adjustment.");
   }
 };
 
-export const updatePayrollItem = async (payload: PayrollItemUpdatePayload) => {
-  try {
-    const response = await axios.put("/api/admin/payroll/adjustments", payload);
-    return response.data?.data ?? response.data;
-  } catch (error) {
-    return handleApiError(error, "Failed to update payroll item.");
-  }
-};
+export const updatePayrollItem = updatePayrollAdjustment;
 
 export const updatePayrollStatus = async (payload: PayrollStatusUpdatePayload) => {
   try {
@@ -53,7 +67,9 @@ export const updatePayrollStatus = async (payload: PayrollStatusUpdatePayload) =
 
 export const PayrollHandler = {
   getPayrolls,
+  getPayrollItemById,
   getPayrollByMonth,
+  reconcilePayroll,
   updatePayrollAdjustment,
   updatePayrollItem,
   updatePayrollStatus,

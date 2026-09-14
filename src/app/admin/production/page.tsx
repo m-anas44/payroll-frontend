@@ -6,6 +6,7 @@ import ProductionTable from "@/components/production/ProductionTable";
 import BatchProductionModal from "@/components/production/BatchProductionModal";
 import Pagination from "@/components/common/Pagination";
 import { Layers, Loader2, AlertCircle } from "lucide-react";
+import { ProductionTableSkeleton } from "@/skeletons";
 import { getProductionEntries } from "@/handlers/production.handler";
 import { getWorkers } from "@/handlers/worker.handler";
 import { getDepartments } from "@/handlers/department.handler";
@@ -162,7 +163,6 @@ export default function ProductionPage() {
       <Heading
         title="Production Entry"
         subtitle="Record and manage daily piece-rate production for Askari Shoe."
-        icon={Layers}
         actions={
           <button
             onClick={() => setIsBatchModalOpen(true)}
@@ -192,9 +192,7 @@ export default function ProductionPage() {
       )}
 
       {isLoading ? (
-        <div className="flex h-64 items-center justify-center rounded-xl border border-slate-200 bg-white">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-        </div>
+        <ProductionTableSkeleton />
       ) : (
         <div className="space-y-4">
           <ProductionTable

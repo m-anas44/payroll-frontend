@@ -45,16 +45,6 @@ export interface MonthlyPayrollRecord {
   notes?: string;
 }
 
-export interface PayrollAdjustmentPayload {
-  payrollId?: string;
-  payrollItemId?: string;
-  workerId: string;
-  allowanceAmount?: number;
-  advanceAmount?: number;
-  eobiAmount?: number;
-  otherDeductions?: number;
-}
-
 export interface PayrollItemUpdatePayload {
   payrollId?: string;
   payrollItemId?: string;

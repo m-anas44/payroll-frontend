@@ -15,10 +15,11 @@ import ConfirmDeleteModal from "@/components/common/ConfirmDeleteModal";
 import { Article } from "@/types/article";
 import { Package, Plus, Edit2, Trash2, Search } from "lucide-react";
 import { toast } from "sonner";
+import { TableRowSkeleton } from "@/skeletons";
 
 export default function ArticlesPage() {
   const { currentUser } = useAuthStore();
-  const isAdmin = currentUser?.role === "admin"
+  const isAdmin = currentUser?.role === "admin";
 
   const [articles, setArticles] = useState<Article[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -135,7 +136,6 @@ export default function ArticlesPage() {
       <Heading
         title="Article Catalog"
         subtitle="Manage article numbers, names, and status."
-        icon={Package}
         actions={
           isAdmin ? (
             <button
@@ -201,14 +201,7 @@ export default function ArticlesPage() {
           </thead>
           <tbody className="divide-y divide-slate-100 font-medium">
             {isLoading ? (
-              <tr>
-                <td
-                  colSpan={5}
-                  className="px-4 py-8 text-center text-slate-400 font-medium"
-                >
-                  Loading articles...
-                </td>
-              </tr>
+              <TableRowSkeleton columns={5} rows={6} />
             ) : articles.length === 0 ? (
               <tr>
                 <td

@@ -1,148 +1,108 @@
 import axios, {
+  AxiosError,
   AxiosInstance,
-  AxiosRequestConfig,
-  AxiosResponse,
   InternalAxiosRequestConfig,
 } from "axios";
-import axiosRetry from "axios-retry";
-import { toast } from "sonner";
 
-// Next.js client-side env vars MUST be prefixed with NEXT_PUBLIC_
-const FASTAPI_BASE_URL =
-  process.env.NEXT_PUBLIC_FASTAPI_URL ||
-  (process.env.NODE_ENV === "production"
-    ? process.env.NEXT_PUBLIC_FASTAPI_PROD_URL
-    : "http://localhost:8000");
+// Global singleton tracking any active in-flight refresh request across the application
+let refreshPromise: Promise<boolean> | null = null;
 
-export const apiClient: AxiosInstance = axios.create({
-  baseURL: `${FASTAPI_BASE_URL?.replace(/\/$/, "")}/api`,
-  headers: { "Content-Type": "application/json" },
-  timeout: 30000,
-});
-
-// Safely retry ONLY network drops or GET requests to prevent duplicate batch production submissions
-axiosRetry(apiClient, {
-  retries: 2,
-  retryDelay: (retryCount) => retryCount * 1000,
-  shouldResetTimeout: true,
-  retryCondition: (error) =>
-    axiosRetry.isNetworkError(error) ||
-    (axiosRetry.isIdempotentRequestError(error) && error.code === "ECONNABORTED"),
-});
-
-// -- Deduplication State for Refresh & Toasts --------------------------------
-let isRefreshing = false;
-let pendingQueue: Array<{
-  resolve: (value: AxiosResponse) => void;
-  reject: (reason?: unknown) => void;
-  config: AxiosRequestConfig;
-}> = [];
-
-let isShowingError = false;
-let errorTimeout: ReturnType<typeof setTimeout> | undefined;
-
-// ==================== REQUEST INTERCEPTOR ====================
-apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  if (typeof window !== "undefined" && !window.navigator.onLine) {
-    const controller = new AbortController();
-    config.signal = controller.signal;
-    controller.abort("User is offline");
+/**
+ * Executes a single-flight call to `/api/auth/refresh`.
+ * Multiple parallel invocations coalesce into the same promise.
+ */
+export async function refreshAuthSession(): Promise<boolean> {
+  if (refreshPromise) {
+    return refreshPromise;
   }
-  return config;
-});
 
-// ==================== RESPONSE INTERCEPTOR ====================
-apiClient.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalConfig = error.config as InternalAxiosRequestConfig & {
-      _retried?: boolean;
-    };
-
-    const status = error?.response?.status;
-
-    if (typeof window !== "undefined") {
-      // 1. Silent Refresh + Queueing for 401 Errors
-      if (
-        status === 401 &&
-        !originalConfig._retried &&
-        !originalConfig.url?.includes("/api/auth/refresh")
-      ) {
-        if (isRefreshing) {
-          return new Promise((resolve, reject) => {
-            pendingQueue.push({ resolve, reject, config: originalConfig });
-          });
-        }
-
-        isRefreshing = true;
-        originalConfig._retried = true;
-
-        try {
-          // Silent refresh call
-          await apiClient.post("/api/auth/refresh");
-
-          // Resolve all concurrent requests queued during the refresh
-          const queued = pendingQueue.splice(0);
-          for (const pending of queued) {
-            try {
-              pending.resolve(await apiClient(pending.config));
-            } catch (retryErr) {
-              pending.reject(retryErr);
-            }
-          }
-
-          return apiClient(originalConfig);
-        } catch (refreshError) {
-          // Reject all queued requests and boot user to login page
-          pendingQueue.splice(0).forEach(({ reject }) => reject(refreshError));
-
-          sessionStorage.clear();
-          if (!isShowingError) {
-            isShowingError = true;
-            toast.error("Your session has expired. Please log in again.");
-            setTimeout(() => {
-              isShowingError = false;
-            }, 3000);
-          }
-
-          setTimeout(() => {
-            if (window.location.pathname !== "/") {
-              window.location.href = "/";
-            }
-          }, 1000);
-
-          return Promise.reject(refreshError);
-        } finally {
-          isRefreshing = false;
-        }
-      }
-
-      // 2. Debounced Toast Notifications for Non-401 Errors
-      if (status !== 401) {
-        let message = "Something went wrong. Try again.";
-
-        if (
-          error.code === "ECONNABORTED" ||
-          error.message?.includes("timeout")
-        ) {
-          message = "Request timed out. Please check your connection.";
-        } else if (error?.response?.data?.message) {
-          message = error.response.data.message;
-        } else if (error?.response?.data?.detail) {
-          message = error.response.data.detail;
-        }
-
-        if (!isShowingError) {
-          isShowingError = true;
-          toast.error(message);
-          clearTimeout(errorTimeout);
-          errorTimeout = setTimeout(() => {
-            isShowingError = false;
-          }, 3000);
-        }
-      }
+  refreshPromise = (async () => {
+    try {
+      // Use raw axios to prevent infinite recursive interceptor loops
+      const response = await axios.post(
+        "/api/auth/refresh",
+        {},
+        {
+          withCredentials: true,
+          headers: { "Cache-Control": "no-store" },
+        },
+      );
+      return response.status === 200;
+    } catch {
+      return false;
+    } finally {
+      refreshPromise = null;
     }
+  })();
 
-    return Promise.reject(error);
-  }
+  return refreshPromise;
+}
+
+/**
+ * Interceptor that traps 401s, waits for token refresh via the singleton promise,
+ * and seamlessly retries the original request once rotation completes.
+ */
+export function attachAuthInterceptors(instance: AxiosInstance): AxiosInstance {
+  instance.interceptors.response.use(
+    (response) => response,
+    async (error: AxiosError) => {
+      const originalRequest = error.config as InternalAxiosRequestConfig & {
+        _retry?: boolean;
+      };
+
+      // Pass through if error is canceled or not an authorization failure
+      if (
+        !error.response ||
+        error.response.status !== 401 ||
+        !originalRequest
+      ) {
+        return Promise.reject(error);
+      }
+
+      // Avoid looping on auth endpoints or requests already retried
+      const isAuthEndpoint =
+        originalRequest.url?.includes("/auth/refresh") ||
+        originalRequest.url?.includes("/auth/login");
+
+      if (originalRequest._retry || isAuthEndpoint) {
+        return Promise.reject(error);
+      }
+
+      originalRequest._retry = true;
+
+      const refreshSuccess = await refreshAuthSession();
+
+      if (refreshSuccess) {
+        return instance(originalRequest);
+      }
+
+      // If refresh failed and this runs in the browser, redirect to login
+      if (
+        typeof window !== "undefined" &&
+        !window.location.pathname.startsWith("/login")
+      ) {
+        window.location.href = "/login?expired=true";
+      }
+
+      return Promise.reject(error);
+    },
+  );
+
+  return instance;
+}
+
+const baseUrl =
+  process.env.NODE_ENV === "production"
+    ? process.env.NEXT_PUBLIC_FASTAPI_PROD_URL
+    : process.env.NEXT_PUBLIC_FASTAPI_DEV_URL;
+
+export const apiClient = attachAuthInterceptors(
+  axios.create({
+    baseURL: `${baseUrl}/api`,
+    headers: {
+      "Content-Type": "application/json",
+    },
+    withCredentials: true,
+    timeout: 30000,
+  }),
 );

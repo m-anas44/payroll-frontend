@@ -5,6 +5,7 @@ import { createProductionBatch } from "@/handlers/production.handler";
 import CustomSelect, { SelectOption } from "@/components/common/CustomSelect";
 import { X, Layers, Save, Loader2, Users, User, SlidersHorizontal, CheckSquare, Square } from "lucide-react";
 import { toast } from "sonner";
+import { ModalFormSkeleton } from "@/skeletons";
 import { Department } from "@/types/department";
 import { Article } from "@/types/article";
 import { Operation } from "@/types/operation";
@@ -350,8 +351,8 @@ export default function BatchProductionModal({
         </div>
 
         {isLoadingData ? (
-          <div className="flex flex-1 items-center justify-center py-20">
-            <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+          <div className="p-6">
+            <ModalFormSkeleton rows={4} />
           </div>
         ) : (
           <form onSubmit={handleSubmitBatch} className="flex flex-1 flex-col overflow-hidden">
@@ -385,7 +386,7 @@ export default function BatchProductionModal({
 
               <div>
                 <CustomSelect
-                  label={entryMode === "joint" ? "Article *" : "Default Article"}
+                  label={entryMode === "joint" ? "Article" : "Default Article"}
                   required={entryMode === "joint"}
                   value={commonArticleId}
                   onChange={(val) => setCommonArticleId(String(val))}
@@ -399,7 +400,7 @@ export default function BatchProductionModal({
                 <div className="flex items-end gap-1.5">
                   <div className="flex-1 min-w-0">
                     <CustomSelect
-                      label={entryMode === "joint" ? "Operation *" : "Default Operation"}
+                      label={entryMode === "joint" ? "Operation" : "Default Operation"}
                       required={entryMode === "joint"}
                       value={commonOperationId}
                       onChange={(val) => setCommonOperationId(String(val))}

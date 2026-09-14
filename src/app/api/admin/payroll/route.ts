@@ -31,7 +31,6 @@ export async function GET(request: NextRequest) {
     });
 
     const queryString = params.toString();
-    console.log("query string: ", queryString)
     const endpoint = `/admin/payroll${queryString ? `?${queryString}` : ""}`;
 
     const response = await apiClient.get(endpoint, { headers });

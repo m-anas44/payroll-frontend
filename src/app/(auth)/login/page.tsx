@@ -7,7 +7,7 @@ import { Building, Shield, User, Key, AlertCircle } from "lucide-react";
 import { APP_NAME, COMPANY_NAME } from "@/lib/constants";
 import { login as loginRequest } from "@/handlers/authHandler";
 
-type AuthRoleTab = "admin" | "worker";
+type AuthRoleTab = "admin" | "operator";
 
 export default function LoginPage() {
   const { login, isAuthenticated, currentUser } = useAuthStore();
@@ -33,11 +33,10 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const payloadRole = activeTab === "worker" ? "operator" : activeTab;
-      const res = await loginRequest({ email, password, role: payloadRole });
+      const res = await loginRequest({ email, password, role: activeTab.toLowerCase() });
 
       // Store user data (including normalized role) in Zustand for UI components
-      useAuthStore.getState().login(res.user, res.token || res.accessToken);
+      useAuthStore.getState().login(res.user);
 
       // Redirect based on role
       const isRoleAdmin = res.user?.role?.toLowerCase() === "admin";
@@ -85,11 +84,11 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => {
-                setActiveTab("worker");
+                setActiveTab("operator");
                 setError("");
               }}
               className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold rounded-md transition-all ${
-                activeTab === "worker"
+                activeTab === "operator"
                   ? "bg-white text-emerald-600 shadow-xs border border-slate-200/30"
                   : "text-slate-600 hover:text-slate-900"
               }`}

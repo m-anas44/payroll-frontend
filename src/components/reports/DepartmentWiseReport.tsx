@@ -6,6 +6,7 @@ import { formatCurrency, formatQuantity } from "@/lib/currency";
 import { getCurrentMonthStr } from "@/lib/format-date";
 import { Building2, Download, Loader2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import { ReportTableSkeleton } from "@/skeletons";
 
 interface DepartmentWiseRow {
   departmentName: string;
@@ -107,9 +108,7 @@ export default function DepartmentWiseReport() {
       )}
 
       {isLoading ? (
-        <div className="flex h-64 items-center justify-center rounded-xl border border-slate-200 bg-white">
-          <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
-        </div>
+        <ReportTableSkeleton columns={5} rows={5} />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-xs ">
           <table className="w-full text-left text-xs">

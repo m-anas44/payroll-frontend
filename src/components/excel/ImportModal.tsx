@@ -1,8 +1,23 @@
 "use client";
 
-import React, { useState } from "react";
-import { ExcelHandler } from "@/handlers/excel.handler";
-import { FileUp, X, CheckCircle2, Download } from "lucide-react";
+import React, { useRef, useState } from "react";
+import {
+  X,
+  UploadCloud,
+  FileSpreadsheet,
+  AlertTriangle,
+  CheckCircle2,
+  Download,
+  Loader2,
+  Trash2,
+} from "lucide-react";
+import { toast } from "sonner";
+import { uploadWorkersExcel } from "@/handlers/worker.handler";
+
+interface RowError {
+  row: number;
+  error: string;
+}
 
 interface ImportModalProps {
   isOpen: boolean;
@@ -15,130 +30,283 @@ export default function ImportModal({
   onClose,
   onSuccess,
 }: ImportModalProps) {
-  const [fileContent, setFileContent] = useState("");
-  const [summary, setSummary] = useState<{ imported: number; skipped: number } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [rowErrors, setRowErrors] = useState<RowError[]>([]);
+  const [generalError, setGeneralError] = useState("");
 
   if (!isOpen) return null;
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const content = event.target?.result as string;
-      setFileContent(content);
-    };
-    reader.readAsText(file);
+  const handleReset = () => {
+    setSelectedFile(null);
+    setRowErrors([]);
+    setGeneralError("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const handleImport = () => {
-    if (!fileContent) return;
-    const res = ExcelHandler.importWorkersFromCSV(fileContent);
-    setSummary(res);
-    setTimeout(() => {
-      if (onSuccess) onSuccess();
-      onClose();
-      setSummary(null);
-      setFileContent("");
-    }, 1500);
+  const handleClose = () => {
+    handleReset();
+    onClose();
   };
 
-  const handleDownloadSample = () => {
-    const sampleCSV = `Worker Code,Name,CNIC,Department,Skill,Date of Joining,Date of Birth,Contact,Address,Police Verification
-W-1009,Zahid Hussain,35202-7766554-1,Cutting Department,Cutting Master,2026-01-15,1992-05-10,0300-9988776,Multan Road Lahore,Verified
-W-1010,Sajid Ali,35202-6655443-3,Stitching Department,Stitching Specialist,2026-02-01,1994-08-20,0321-4455667,Ferozepur Road Lahore,Pending`;
+  const validateAndSetFile = (file: File) => {
+    const validExtensions = [".xlsx", ".xls"];
+    const isValidExt = validExtensions.some((ext) =>
+      file.name.toLowerCase().endsWith(ext)
+    );
 
-    const blob = new Blob([sampleCSV], { type: "text/csv;charset=utf-8;" });
+    if (!isValidExt) {
+      toast.error("Please select a valid Excel file (.xlsx or .xls).");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("File size exceeds 5MB limit.");
+      return;
+    }
+
+    setSelectedFile(file);
+    setRowErrors([]);
+    setGeneralError("");
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      validateAndSetFile(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      validateAndSetFile(e.target.files[0]);
+    }
+  };
+
+  const downloadSampleTemplate = () => {
+    const csvContent =
+      "Name,CNIC,Department\n" +
+      "Muhammad Tariq,3520112345671,Cutting\n" +
+      "Zahid Mahmood,3520198765432,Stitching\n";
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = "Worker_Import_Template.csv";
+    link.setAttribute("download", "workers_import_template.csv");
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleUpload = async () => {
+    if (!selectedFile) return;
+
+    try {
+      setIsUploading(true);
+      setRowErrors([]);
+      setGeneralError("");
+
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+
+      const response = await uploadWorkersExcel(formData);
+
+      toast.success(response.message || "Workers imported successfully.");
+      if (onSuccess) onSuccess();
+      handleClose();
+    } catch (err: any) {
+      const responseData = err.response?.data;
+      const detail = responseData?.detail || responseData?.error;
+
+      if (detail && typeof detail === "object" && Array.isArray(detail.errors)) {
+        setRowErrors(detail.errors);
+        setGeneralError(detail.message || "Please resolve the row errors below.");
+      } else if (typeof detail === "string") {
+        setGeneralError(detail);
+      } else {
+        setGeneralError("Failed to upload workers. Please check file formatting.");
+      }
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-200 ">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-4 ">
-          <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-            <FileUp className="h-5 w-5 text-emerald-600" />
-            Import Workers Batch (CSV / Excel)
-          </h3>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+      <div className="w-full max-w-xl rounded-2xl bg-white shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+          <div className="flex items-center gap-2">
+            <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
+              <FileSpreadsheet className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">
+                Bulk Import Workers
+              </h3>
+              <p className="text-xs text-slate-500">
+                Upload a verified Excel spreadsheet to register multiple workers.
+              </p>
+            </div>
+          </div>
           <button
-            onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 "
+            onClick={handleClose}
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" />
           </button>
         </div>
 
-        {summary ? (
-          <div className="my-8 flex flex-col items-center justify-center text-center">
-            <CheckCircle2 className="h-12 w-12 text-emerald-500 mb-2 animate-bounce" />
-            <p className="text-sm font-bold text-slate-900 ">
-              Successfully Imported {summary.imported} workers!
-            </p>
-            {summary.skipped > 0 && (
-              <p className="text-xs text-amber-600 font-medium mt-1">
-                Skipped {summary.skipped} duplicate CNICs.
+        {/* Content */}
+        <div className="p-6 space-y-4 overflow-y-auto flex-1">
+          {/* Template Download Prompt */}
+          <div className="flex items-center justify-between rounded-xl bg-slate-50 p-3.5 border border-slate-200">
+            <div className="space-y-0.5">
+              <p className="text-xs font-bold text-slate-800">
+                Standard Excel Template
               </p>
-            )}
+              <p className="text-[11px] text-slate-500">
+                Ensure headers match: <code>Name</code>, <code>CNIC</code>, and <code>Department</code>.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={downloadSampleTemplate}
+              className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <Download className="h-3.5 w-3.5 text-blue-600" />
+              <span>Sample CSV</span>
+            </button>
           </div>
-        ) : (
-          <div className="mt-4 space-y-4">
-            <div className="flex items-center justify-between bg-slate-50 p-3 rounded-lg border border-slate-200 ">
-              <div>
-                <span className="text-xs font-bold text-slate-900 ">
-                  Need a CSV template?
-                </span>
-                <p className="text-[11px] text-slate-500">
-                  Download the official structured CSV template.
-                </p>
+
+          {/* Drag and Drop Zone */}
+          {!selectedFile ? (
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDragging(true);
+              }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              className={`flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 text-center cursor-pointer transition-colors ${
+                isDragging
+                  ? "border-blue-500 bg-blue-50/50"
+                  : "border-slate-200 hover:border-slate-300 hover:bg-slate-50/50"
+              }`}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx, .xls"
+                className="hidden"
+                onChange={handleFileSelect}
+              />
+              <div className="rounded-full bg-blue-50 p-3 text-blue-600 mb-3">
+                <UploadCloud className="h-6 w-6" />
+              </div>
+              <p className="text-xs font-bold text-slate-800">
+                Click to browse or drag and drop file here
+              </p>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Supported formats: .XLSX, .XLS (Up to 5MB)
+              </p>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg bg-emerald-100 p-2 text-emerald-700">
+                  <FileSpreadsheet className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-800">
+                    {selectedFile.name}
+                  </p>
+                  <p className="text-[11px] text-slate-400 font-mono">
+                    {(selectedFile.size / 1024).toFixed(1)} KB
+                  </p>
+                </div>
               </div>
               <button
                 type="button"
-                onClick={handleDownloadSample}
-                className="flex items-center gap-1 text-xs font-bold text-emerald-600 hover:underline"
+                disabled={isUploading}
+                onClick={handleReset}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                title="Remove file"
               >
-                <Download className="h-3.5 w-3.5" />
-                Template
+                <Trash2 className="h-4 w-4" />
               </button>
             </div>
+          )}
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                Select CSV File
-              </label>
-              <input
-                type="file"
-                accept=".csv"
-                onChange={handleFileUpload}
-                className="w-full text-xs text-slate-600 border border-slate-300 rounded-lg p-2 bg-slate-50 "
-              />
+          {/* General Error Banner */}
+          {generalError && (
+            <div className="flex items-start gap-2.5 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700 font-medium">
+              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+              <div>{generalError}</div>
             </div>
+          )}
 
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 ">
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-lg px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 "
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={!fileContent}
-                onClick={handleImport}
-                className="rounded-lg bg-emerald-600 px-5 py-2 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 transition-colors disabled:opacity-50"
-              >
-                Execute Import
-              </button>
+          {/* Granular Row Validation Errors */}
+          {rowErrors.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-800">
+                <span className="text-rose-600">
+                  Validation Issues ({rowErrors.length} found)
+                </span>
+                <span className="text-[11px] text-slate-400">
+                  Fix your spreadsheet and re-upload
+                </span>
+              </div>
+              <div className="max-h-48 overflow-y-auto rounded-xl border border-rose-200 bg-rose-50/30 divide-y divide-rose-100">
+                {rowErrors.map((err, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center gap-3 px-3 py-2 text-xs"
+                  >
+                    <span className="shrink-0 rounded bg-rose-200/60 px-1.5 py-0.5 font-mono text-[10px] font-bold text-rose-800">
+                      Row {err.row}
+                    </span>
+                    <span className="text-slate-700">{err.error}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-2 border-t border-slate-100 px-6 py-4 bg-slate-50/50">
+          <button
+            type="button"
+            onClick={handleClose}
+            disabled={isUploading}
+            className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleUpload}
+            disabled={!selectedFile || isUploading}
+            className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-xs"
+          >
+            {isUploading ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <span>Validating & Uploading...</span>
+              </>
+            ) : (
+              <span>Confirm & Import</span>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );
