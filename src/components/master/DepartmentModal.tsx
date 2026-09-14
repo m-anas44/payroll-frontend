@@ -23,13 +23,13 @@ export default function DepartmentModal({
     code: string;
     name: string;
     description: string;
-    status: "Active" | "Inactive";
+    status: "active" | "inactive";
   }>({
     _id: "",
     code: "",
     name: "",
     description: "",
-    status: "Active",
+    status: "active",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -45,7 +45,7 @@ export default function DepartmentModal({
         code: deptToEdit.code,
         name: deptToEdit.name,
         description: deptToEdit.description || "",
-        status: deptToEdit.status,
+        status: deptToEdit.status || "active",
       });
     } else {
       setFormData({
@@ -53,14 +53,14 @@ export default function DepartmentModal({
         code: "",
         name: "",
         description: "",
-        status: "Active",
+        status: "active",
       });
     }
   }
 
   if (!isOpen) return null;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault();
     setErrorMessage("");
 

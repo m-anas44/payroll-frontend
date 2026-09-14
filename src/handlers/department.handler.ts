@@ -7,7 +7,7 @@ const normalizeDepartment = (item: any): Department => ({
   code: item?.code?.trim() || "NO-CODE",
   name: item?.name || "Unnamed Department",
   description: item?.description || "Operational unit for piece rate manufacturing.",
-  status: item?.status === "inactive" ? "Inactive" : "Active",
+  status: item?.status || "active",
   createdAt: item?.createdAt || new Date().toISOString(),
   workerCount: item?.workerCount ?? 0,
 });
@@ -37,7 +37,7 @@ export async function createDepartment(data: Omit<Department, "id" | "createdAt"
     ...data,
     code: data.code?.trim() || undefined,
     description: data.description?.trim() || undefined,
-    status: data.status === "Inactive" ? "inactive" : "active",
+    status: data.status
   };
 
   try {
@@ -54,7 +54,7 @@ export async function updateDepartment(id: string, updates: Partial<Department>)
       ...updates,
       code: updates.code?.trim() || undefined,
       description: updates.description?.trim() || undefined,
-      status: updates.status === "Inactive" ? "inactive" : "active",
+      status: updates.status
     };
 
     const response = await axios.put(`/api/admin/departments/${id}`, payload);

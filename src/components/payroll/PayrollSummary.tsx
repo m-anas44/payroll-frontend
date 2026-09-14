@@ -19,8 +19,8 @@ interface PayrollSummaryProps {
 }
 
 export default function PayrollSummary({ record }: PayrollSummaryProps) {
-  const handleStatusChange = (status: "Draft" | "Approved" | "Paid") => {
-    PayrollHandler.updateStatus(record.id, status);
+const handleStatusChange: any = (status: "draft" | "generated" | "finalized") => {
+    PayrollHandler.updatePayrollStatus({ payrollId: record._id, status });
   };
 
   return (
@@ -42,19 +42,19 @@ export default function PayrollSummary({ record }: PayrollSummaryProps) {
         </div>
 
         <div className="flex items-center gap-2">
-          {record.status === "Draft" && (
+          {record.status === "draft" && (
             <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700 border border-amber-200 ">
               <Clock className="h-3.5 w-3.5" />
               Draft Status
             </span>
           )}
-          {record.status === "Approved" && (
+          {record.status === "generated" && (
             <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700 border border-blue-200 ">
               <ShieldCheck className="h-3.5 w-3.5" />
-              Approved Payroll
+              Generated / Approved
             </span>
           )}
-          {record.status === "Paid" && (
+          {record.status === "finalized" && (
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 border border-emerald-200 ">
               <CheckCircle className="h-3.5 w-3.5" />
               Disbursed / Paid
@@ -62,17 +62,17 @@ export default function PayrollSummary({ record }: PayrollSummaryProps) {
           )}
 
           <div className="flex items-center gap-1 ml-2 border-l border-slate-200 pl-3">
-            {record.status === "Draft" && (
+            {record.status === "draft" && (
               <button
-                onClick={() => handleStatusChange("Approved")}
+                onClick={() => handleStatusChange("generated")}
                 className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700 transition-colors shadow-xs"
               >
                 Approve Payroll
               </button>
             )}
-            {record.status === "Approved" && (
+            {record.status === "generated" && (
               <button
-                onClick={() => handleStatusChange("Paid")}
+                onClick={() => handleStatusChange("finalized")}
                 className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 transition-colors shadow-xs"
               >
                 Mark as Paid

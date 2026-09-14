@@ -3,7 +3,7 @@ export interface Department {
   code: string;
   name: string;
   description?: string;
-  status?: "Active" | "Inactive";
+  status?: "active" | "inactive";
   workerCount?: number;
   createdAt?: string;
 }

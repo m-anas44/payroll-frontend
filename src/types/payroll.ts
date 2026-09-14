@@ -32,11 +32,11 @@ export interface WorkerPayrollSummary {
 }
 
 export interface MonthlyPayrollRecord {
-  id: string;
+  _id: string;
   month: string; // "YYYY-MM" e.g. "2026-08"
   generatedAt?: string;
   generatedBy?: string;
-  status: "Draft" | "Approved" | "Paid" | "draft" | "generated" | "finalized";
+  status: "draft" | "generated" | "finalized";
   totalWorkers: number;
   totalQuantity: number;
   totalGrossEarnings: number;
